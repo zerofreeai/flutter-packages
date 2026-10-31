@@ -42,7 +42,9 @@ class ImageCaptureProxyApi extends PigeonApiImageCapture {
       @Nullable Long targetRotation,
       @Nullable CameraXFlashMode flashMode,
       @Nullable Long jpegQuality) {
-    final ImageCapture.Builder builder = new ImageCapture.Builder();
+    // 静态照片优先保证画质，由 CameraX 选择高质量拍摄处理。
+    final ImageCapture.Builder builder =
+        new ImageCapture.Builder().setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY);
     if (targetRotation != null) {
       builder.setTargetRotation(targetRotation.intValue());
     }
