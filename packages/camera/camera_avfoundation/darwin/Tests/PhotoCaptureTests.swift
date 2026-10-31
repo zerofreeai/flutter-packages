@@ -26,6 +26,7 @@ final class PhotoCaptureTests: XCTestCase {
 
     let mockOutput = MockCapturePhotoOutput()
     mockOutput.capturePhotoWithSettingsStub = { settings, photoDelegate in
+      XCTAssertEqual(settings.photoQualityPrioritization, .quality)
       let delegate =
         cam.inProgressSavePhotoDelegates[settings.uniqueID]
       // Completion runs on IO queue.
@@ -63,6 +64,7 @@ final class PhotoCaptureTests: XCTestCase {
 
     let mockOutput = MockCapturePhotoOutput()
     mockOutput.capturePhotoWithSettingsStub = { settings, photoDelegate in
+      XCTAssertEqual(settings.photoQualityPrioritization, .quality)
       let delegate =
         cam.inProgressSavePhotoDelegates[settings.uniqueID]
       // Completion runs on IO queue.
@@ -102,6 +104,7 @@ final class PhotoCaptureTests: XCTestCase {
     let mockOutput = MockCapturePhotoOutput()
     mockOutput.availablePhotoCodecTypes = [AVVideoCodecType.hevc]
     mockOutput.capturePhotoWithSettingsStub = { settings, photoDelegate in
+      XCTAssertEqual(settings.photoQualityPrioritization, .quality)
       let delegate =
         cam.inProgressSavePhotoDelegates[settings.uniqueID]
       // Completion runs on IO queue.
@@ -138,6 +141,7 @@ final class PhotoCaptureTests: XCTestCase {
 
     let mockOutput = MockCapturePhotoOutput()
     mockOutput.capturePhotoWithSettingsStub = { settings, photoDelegate in
+      XCTAssertEqual(settings.photoQualityPrioritization, .quality)
       let delegate =
         cam.inProgressSavePhotoDelegates[settings.uniqueID]
       // Completion runs on IO queue.
@@ -188,6 +192,7 @@ final class PhotoCaptureTests: XCTestCase {
     let filePath = "test"
     let mockOutput = MockCapturePhotoOutput()
     mockOutput.capturePhotoWithSettingsStub = { settings, photoDelegate in
+      XCTAssertEqual(settings.photoQualityPrioritization, .quality)
       let delegate =
         cam.inProgressSavePhotoDelegates[settings.uniqueID]
       // Completion runs on IO queue.
@@ -224,6 +229,7 @@ final class PhotoCaptureTests: XCTestCase {
 
     let mockOutput = MockCapturePhotoOutput()
     mockOutput.capturePhotoWithSettingsStub = { settings, photoDelegate in
+      XCTAssertEqual(settings.photoQualityPrioritization, .quality)
       let delegate = cam.inProgressSavePhotoDelegates[settings.uniqueID]
       let ioQueue = DispatchQueue(label: "io_queue")
       ioQueue.async {

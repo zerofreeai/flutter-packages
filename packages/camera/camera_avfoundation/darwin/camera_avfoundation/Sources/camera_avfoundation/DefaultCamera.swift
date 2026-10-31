@@ -180,6 +180,7 @@ final class DefaultCamera: NSObject, Camera {
 
     capturePhotoOutput = AVCapturePhotoOutput()
     capturePhotoOutput.isHighResolutionCaptureEnabled = true
+    capturePhotoOutput.avOutput.maxPhotoQualityPrioritization = .quality
 
     videoCaptureSession.automaticallyConfiguresApplicationAudioSession = false
     audioCaptureSession.automaticallyConfiguresApplicationAudioSession = false
@@ -732,6 +733,9 @@ final class DefaultCamera: NSObject, Camera {
         }
       }
     }
+
+    // 在格式设置完成后统一配置，确保 JPEG 与 HEIF 都使用质量优先。
+    settings.photoQualityPrioritization = .quality
 
     if flashMode != .torch {
       settings.flashMode = getAVCaptureFlashMode(for: flashMode)
