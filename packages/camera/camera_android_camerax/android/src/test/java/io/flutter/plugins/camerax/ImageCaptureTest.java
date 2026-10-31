@@ -49,6 +49,7 @@ public class ImageCaptureTest {
     assertEquals(imageCapture.getResolutionSelector(), mockResolutionSelector);
     assertEquals(imageCapture.getTargetRotation(), Surface.ROTATION_0);
     assertEquals(imageCapture.getFlashMode(), ImageCapture.FLASH_MODE_OFF);
+    assertEquals(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY, imageCapture.getCaptureMode());
   }
 
   @Test
@@ -65,6 +66,7 @@ public class ImageCaptureTest {
     assertEquals(imageCapture.getResolutionSelector(), mockResolutionSelector);
     assertEquals(imageCapture.getTargetRotation(), Surface.ROTATION_0);
     assertEquals(imageCapture.getFlashMode(), ImageCapture.FLASH_MODE_OFF);
+    assertEquals(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY, imageCapture.getCaptureMode());
     assertEquals(imageCapture.getJpegQuality(), 75);
   }
 
