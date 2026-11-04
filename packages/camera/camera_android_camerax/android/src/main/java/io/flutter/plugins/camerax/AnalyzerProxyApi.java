@@ -28,6 +28,7 @@ class AnalyzerProxyApi extends PigeonApiAnalyzer {
   /** Implementation of {@link Analyzer} that passes arguments of callback methods to Dart. */
   static class AnalyzerImpl implements Analyzer {
     final AnalyzerProxyApi api;
+    private long forwardedSequence = 0;
 
     AnalyzerImpl(@NonNull AnalyzerProxyApi api) {
       this.api = api;
@@ -35,6 +36,16 @@ class AnalyzerProxyApi extends PigeonApiAnalyzer {
 
     @Override
     public void analyze(@NonNull ImageProxy image) {
+      final long callbackNanos = System.nanoTime();
+      final CameraFrameTap.Consumer consumer = CameraFrameTap.consumer;
+      if (consumer != null && consumer.consume(image, callbackNanos)) {
+        return;
+      }
+      final CameraFrameTap.Observer observer = CameraFrameTap.observer;
+      if (observer != null) {
+        observer.forwarded(forwardedSequence, image, callbackNanos);
+      }
+      forwardedSequence++;
       api.getPigeonRegistrar()
           .runOnMainThread(
               new ProxyApiRegistrar.FlutterMethodRunnable() {

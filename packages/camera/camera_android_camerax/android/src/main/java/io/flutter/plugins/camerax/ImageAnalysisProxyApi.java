@@ -34,7 +34,17 @@ class ImageAnalysisProxyApi extends PigeonApiImageAnalysis {
       @Nullable Range<?> targetFpsRange,
       @Nullable Long outputImageFormat) {
     final ImageAnalysis.Builder builder = new ImageAnalysis.Builder();
-    if (resolutionSelector != null) {
+    final android.util.Size tapResolution = CameraFrameTap.analysisResolution;
+    if (tapResolution != null) {
+      builder.setResolutionSelector(
+          new ResolutionSelector.Builder()
+              .setResolutionStrategy(
+                  new androidx.camera.core.resolutionselector.ResolutionStrategy(
+                      tapResolution,
+                      androidx.camera.core.resolutionselector.ResolutionStrategy
+                          .FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER))
+              .build());
+    } else if (resolutionSelector != null) {
       builder.setResolutionSelector(resolutionSelector);
     }
     if (targetRotation != null) {
