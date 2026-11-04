@@ -12,9 +12,7 @@ final class DefaultCamera: NSObject, Camera {
 
   var videoFormat: FourCharCode = kCVPixelFormatType_32BGRA {
     didSet {
-      captureVideoOutput.videoSettings = [
-        kCVPixelBufferPixelFormatTypeKey as String: videoFormat
-      ]
+      captureVideoOutput.videoSettings = CameraFrameTap.videoSettings(format: videoFormat)
     }
   }
 
@@ -120,6 +118,9 @@ final class DefaultCamera: NSObject, Camera {
   /// https://github.com/flutter/plugins/pull/4520#discussion_r766335637
   private var maxStreamingPendingFramesCount = 4
 
+  /// 本次图像流已送往 Dart 的帧数，供 [CameraFrameTap.forwarded] 与 Dart 侧逐帧对应。
+  private var streamedFrameSequence = 0
+
   private var fileFormat = PlatformImageFileFormat.jpeg
   private var imageQuality: Int64 = 100
   private var lockedCaptureOrientation = UIDeviceOrientation.unknown
@@ -144,9 +145,7 @@ final class DefaultCamera: NSObject, Camera {
 
     // Setup video capture output.
     let captureVideoOutput = AVCaptureVideoDataOutput()
-    captureVideoOutput.videoSettings = [
-      kCVPixelBufferPixelFormatTypeKey as String: videoFormat
-    ]
+    captureVideoOutput.videoSettings = CameraFrameTap.videoSettings(format: videoFormat)
     captureVideoOutput.alwaysDiscardsLateVideoFrames = true
 
     // Setup video capture connection.
@@ -1248,6 +1247,7 @@ final class DefaultCamera: NSObject, Camera {
         if let self {
           self.isStreamingImages = true
           self.streamingPendingFramesCount = 0
+          self.streamedFrameSequence = 0
         }
         completion(.success(()))
       }
@@ -1268,6 +1268,7 @@ final class DefaultCamera: NSObject, Camera {
     didOutput sampleBuffer: CMSampleBuffer,
     from connection: AVCaptureConnection
   ) {
+    let callbackNs = DispatchTime.now().uptimeNanoseconds
     if output == captureVideoOutput.avOutput {
       if let newBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) {
 
@@ -1284,7 +1285,7 @@ final class DefaultCamera: NSObject, Camera {
       return
     }
 
-    handleSampleBufferStreaming(sampleBuffer)
+    handleSampleBufferStreaming(sampleBuffer, callbackNs: callbackNs)
 
     if isRecording && !isRecordingPaused && videoCaptureSession.isRunning
       && audioCaptureSession.isRunning
@@ -1364,16 +1365,23 @@ final class DefaultCamera: NSObject, Camera {
     }
   }
 
-  private func handleSampleBufferStreaming(_ sampleBuffer: CMSampleBuffer) {
+  private func handleSampleBufferStreaming(_ sampleBuffer: CMSampleBuffer, callbackNs: UInt64) {
     guard isStreamingImages,
-      let eventSink = imageStreamHandler?.eventSink,
-      streamingPendingFramesCount < maxStreamingPendingFramesCount
+      let eventSink = imageStreamHandler?.eventSink
     else {
       return
     }
 
     // Non-pixel buffer samples, such as audio samples, are ignored for streaming
     guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
+      return
+    }
+
+    if let consumer = CameraFrameTap.consumer, consumer(sampleBuffer) {
+      return
+    }
+
+    guard streamingPendingFramesCount < maxStreamingPendingFramesCount else {
       return
     }
 
@@ -1433,6 +1441,12 @@ final class DefaultCamera: NSObject, Camera {
       sensorExposureTimeNanoseconds: Int64(captureDevice.exposureDuration.seconds * 1_000_000_000),
       sensorSensitivity: Double(captureDevice.iso)
     )
+
+    if let forwarded = CameraFrameTap.forwarded {
+      forwarded(
+        streamedFrameSequence, sampleBuffer, callbackNs, DispatchTime.now().uptimeNanoseconds)
+    }
+    streamedFrameSequence += 1
 
     DispatchQueue.main.async {
       eventSink.success(imageBuffer)
