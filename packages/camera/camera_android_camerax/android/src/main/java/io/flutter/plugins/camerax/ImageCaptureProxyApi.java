@@ -41,10 +41,24 @@ class ImageCaptureProxyApi extends PigeonApiImageCapture {
       @Nullable ResolutionSelector resolutionSelector,
       @Nullable Long targetRotation,
       @Nullable CameraXFlashMode flashMode,
-      @Nullable Long jpegQuality) {
+      @Nullable Long jpegQuality,
+      @Nullable androidx.camera.core.CameraInfo originalCamera) {
     // 静态照片优先保证画质，由 CameraX 选择高质量拍摄处理。
     final ImageCapture.Builder builder =
         new ImageCapture.Builder().setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY);
+    if (originalCamera != null)
+      android.util.Log.i(
+          "ZeroPixHDR",
+          "原片镜头输出格式 "
+              + ImageCapture.getImageCaptureCapabilities(originalCamera)
+                  .getSupportedOutputFormats());
+    if (originalCamera != null
+        && android.os.Build.VERSION.SDK_INT >= 34
+        && ImageCapture.getImageCaptureCapabilities(originalCamera)
+            .getSupportedOutputFormats()
+            .contains(ImageCapture.OUTPUT_FORMAT_JPEG_ULTRA_HDR)) {
+      builder.setOutputFormat(ImageCapture.OUTPUT_FORMAT_JPEG_ULTRA_HDR);
+    }
     if (targetRotation != null) {
       builder.setTargetRotation(targetRotation.intValue());
     }

@@ -7,7 +7,7 @@ import 'dart:math' show Point;
 
 import 'package:async/async.dart';
 import 'package:camera_platform_interface/camera_platform_interface.dart';
-import 'package:flutter/foundation.dart' show Uint8List;
+import 'package:flutter/foundation.dart' show Uint8List, debugPrint;
 import 'package:flutter/services.dart' show DeviceOrientation, PlatformException;
 import 'package:flutter/widgets.dart' show Texture, Widget, visibleForTesting;
 import 'package:stream_transform/stream_transform.dart';
@@ -409,6 +409,8 @@ class AndroidCameraCameraX extends CameraPlatform {
     );
     _flutterSurfaceTextureId = await preview!.setSurfaceProvider(systemServicesManager);
 
+    _originalCapture = false;
+    _analysisCapture = null;
     // Configure ImageCapture instance.
     imageCapture = ImageCapture(
       resolutionSelector: _presetResolutionSelector,
@@ -1020,6 +1022,48 @@ class AndroidCameraCameraX extends CameraPlatform {
     );
   }
 
+  bool _originalCapture = false;
+  ImageCapture? _analysisCapture;
+
+  /// 按场景切换拍照用例，同场景连续拍复用绑定。设备不支持该流组合时恢复普通 JPEG。
+  Future<void> configureOriginalCapture(int cameraId, bool original) async {
+    if (_originalCapture == original) {
+      return;
+    }
+    final ImageCapture previous = imageCapture!;
+    final replacement = ImageCapture(
+      resolutionSelector: _presetResolutionSelector,
+      targetRotation:
+          _lockedCaptureOrientation ?? await deviceOrientationManager.getDefaultDisplayRotation(),
+      originalCamera: original ? cameraInfo : null,
+    );
+    await _unbindUseCaseFromLifecycle(previous);
+    try {
+      await _bindUseCaseToLifecycle(replacement, cameraId);
+      imageCapture = replacement;
+    } on PlatformException catch (error) {
+      if (!original ||
+          imageAnalysis == null ||
+          !await processCameraProvider!.isBound(imageAnalysis!)) {
+        await _bindUseCaseToLifecycle(previous, cameraId);
+        rethrow;
+      }
+      // 快门前业务已停取景分析，但 CameraX 仍保留 YUV 输出。一些镜头仅支持预览＋JPEG/R。
+      debugPrint('原片 HDR 三路绑定失败，拍照时释放分析输出：${error.code}');
+      await _unbindUseCaseFromLifecycle(imageAnalysis!);
+      _analysisCapture = previous;
+      try {
+        await _bindUseCaseToLifecycle(replacement, cameraId);
+        imageCapture = replacement;
+      } on PlatformException catch (error) {
+        debugPrint('原片 HDR 双路绑定失败，使用原画质 JPEG：${error.code}');
+        _analysisCapture = null;
+        await _bindUseCaseToLifecycle(previous, cameraId);
+      }
+    }
+    _originalCapture = original;
+  }
+
   /// Captures an image using the camera with ID [cameraId] and returns the file where it was saved.
   @override
   Future<XFile> takePicture(int cameraId) async {
@@ -1301,6 +1345,14 @@ class AndroidCameraCameraX extends CameraPlatform {
 
   /// Configures the [imageAnalysis] instance for image streaming.
   Future<void> _configureImageAnalysis(int cameraId) async {
+    final ImageCapture? regular = _analysisCapture;
+    if (regular != null) {
+      await _unbindUseCaseFromLifecycle(imageCapture!);
+      await _bindUseCaseToLifecycle(regular, cameraId);
+      imageCapture = regular;
+      _analysisCapture = null;
+      _originalCapture = false;
+    }
     await _bindUseCaseToLifecycle(imageAnalysis!, cameraId);
 
     // Set target rotation to default CameraX rotation only if capture

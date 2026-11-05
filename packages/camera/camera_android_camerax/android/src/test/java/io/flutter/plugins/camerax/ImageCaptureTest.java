@@ -35,6 +35,7 @@ import org.mockito.MockedStatic;
 import org.robolectric.RobolectricTestRunner;
 
 @RunWith(RobolectricTestRunner.class)
+@org.robolectric.annotation.Config(sdk = 34)
 public class ImageCaptureTest {
   @Test
   public void pigeon_defaultConstructor_createsImageCaptureWithCorrectConfiguration() {
@@ -44,7 +45,7 @@ public class ImageCaptureTest {
     final long targetResolution = Surface.ROTATION_0;
     final ImageCapture imageCapture =
         api.pigeon_defaultConstructor(
-            mockResolutionSelector, targetResolution, CameraXFlashMode.OFF, null);
+            mockResolutionSelector, targetResolution, CameraXFlashMode.OFF, null, null);
 
     assertEquals(imageCapture.getResolutionSelector(), mockResolutionSelector);
     assertEquals(imageCapture.getTargetRotation(), Surface.ROTATION_0);
@@ -61,13 +62,36 @@ public class ImageCaptureTest {
     final long jpegQuality = 75;
     final ImageCapture imageCapture =
         api.pigeon_defaultConstructor(
-            mockResolutionSelector, targetRotation, CameraXFlashMode.OFF, jpegQuality);
+            mockResolutionSelector, targetRotation, CameraXFlashMode.OFF, jpegQuality, null);
 
     assertEquals(imageCapture.getResolutionSelector(), mockResolutionSelector);
     assertEquals(imageCapture.getTargetRotation(), Surface.ROTATION_0);
     assertEquals(imageCapture.getFlashMode(), ImageCapture.FLASH_MODE_OFF);
     assertEquals(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY, imageCapture.getCaptureMode());
     assertEquals(imageCapture.getJpegQuality(), 75);
+  }
+
+  @Test
+  @org.robolectric.annotation.Config(sdk = 34)
+  public void originalCamera_selectsUltraHdrOnlyWhenSupported() {
+    final PigeonApiImageCapture api = new TestProxyApiRegistrar().getPigeonApiImageCapture();
+    final androidx.camera.core.CameraInfo info = mock(androidx.camera.core.CameraInfo.class);
+    final androidx.camera.core.ImageCaptureCapabilities capabilities =
+        mock(androidx.camera.core.ImageCaptureCapabilities.class);
+    try (MockedStatic<ImageCapture> methods = mockStatic(ImageCapture.class)) {
+      methods.when(() -> ImageCapture.getImageCaptureCapabilities(info)).thenReturn(capabilities);
+      when(capabilities.getSupportedOutputFormats())
+          .thenReturn(
+              new java.util.HashSet<>(
+                  java.util.Arrays.asList(
+                      ImageCapture.OUTPUT_FORMAT_JPEG, ImageCapture.OUTPUT_FORMAT_JPEG_ULTRA_HDR)));
+      final ImageCapture hdr = api.pigeon_defaultConstructor(null, 0L, null, null, info);
+      assertEquals(ImageCapture.OUTPUT_FORMAT_JPEG_ULTRA_HDR, hdr.getOutputFormat());
+      when(capabilities.getSupportedOutputFormats())
+          .thenReturn(java.util.Collections.singleton(ImageCapture.OUTPUT_FORMAT_JPEG));
+      final ImageCapture sdr = api.pigeon_defaultConstructor(null, 0L, null, null, info);
+      assertEquals(ImageCapture.OUTPUT_FORMAT_JPEG, sdr.getOutputFormat());
+    }
   }
 
   @Test

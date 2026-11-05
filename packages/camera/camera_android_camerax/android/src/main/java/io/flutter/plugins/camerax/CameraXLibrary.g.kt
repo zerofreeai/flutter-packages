@@ -4248,7 +4248,8 @@ abstract class PigeonApiImageCapture(
       resolutionSelector: androidx.camera.core.resolutionselector.ResolutionSelector?,
       targetRotation: Long?,
       flashMode: CameraXFlashMode?,
-      jpegQuality: Long?
+      jpegQuality: Long?,
+      originalCamera: androidx.camera.core.CameraInfo?
   ): androidx.camera.core.ImageCapture
 
   abstract fun resolutionSelector(
@@ -4290,11 +4291,16 @@ abstract class PigeonApiImageCapture(
             val targetRotationArg = args[2] as Long?
             val flashModeArg = args[3] as CameraXFlashMode?
             val jpegQualityArg = args[4] as Long?
+            val originalCameraArg = args[5] as androidx.camera.core.CameraInfo?
             val wrapped: List<Any?> =
                 try {
                   api.pigeonRegistrar.instanceManager.addDartCreatedInstance(
                       api.pigeon_defaultConstructor(
-                          resolutionSelectorArg, targetRotationArg, flashModeArg, jpegQualityArg),
+                          resolutionSelectorArg,
+                          targetRotationArg,
+                          flashModeArg,
+                          jpegQualityArg,
+                          originalCameraArg),
                       pigeon_identifierArg)
                   listOf(null)
                 } catch (exception: Throwable) {

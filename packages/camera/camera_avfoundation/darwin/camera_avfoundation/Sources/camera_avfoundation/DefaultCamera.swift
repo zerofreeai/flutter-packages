@@ -707,9 +707,6 @@ final class DefaultCamera: NSObject, Camera {
   func captureToFile(completion: @escaping (Result<String, any Error>) -> Void) {
     var settings = AVCapturePhotoSettings()
 
-    if mediaSettings.resolutionPreset == .max {
-      settings.isHighResolutionPhotoEnabled = true
-    }
 
     let fileExtension: String
 
@@ -728,13 +725,11 @@ final class DefaultCamera: NSObject, Camera {
             AVVideoQualityKey: CGFloat(imageQuality) / 100.0
           ],
         ])
-        if mediaSettings.resolutionPreset == .max {
-          settings.isHighResolutionPhotoEnabled = true
-        }
       }
     }
 
     // 在格式设置完成后统一配置，确保 JPEG 与 HEIF 都使用质量优先。
+    settings.isHighResolutionPhotoEnabled = mediaSettings.resolutionPreset == .max
     settings.photoQualityPrioritization = .quality
 
     if flashMode != .torch {

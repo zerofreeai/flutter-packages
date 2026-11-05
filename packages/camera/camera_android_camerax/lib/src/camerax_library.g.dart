@@ -125,6 +125,7 @@ class PigeonOverrides {
     int? targetRotation,
     CameraXFlashMode? flashMode,
     int? jpegQuality,
+    CameraInfo? originalCamera,
   })?
   imageCapture_new;
 
@@ -4081,6 +4082,7 @@ class ImageCapture extends UseCase {
     int? targetRotation,
     CameraXFlashMode? flashMode,
     int? jpegQuality,
+    CameraInfo? originalCamera,
   }) {
     if (PigeonOverrides.imageCapture_new != null) {
       return PigeonOverrides.imageCapture_new!(
@@ -4088,6 +4090,7 @@ class ImageCapture extends UseCase {
         targetRotation: targetRotation,
         flashMode: flashMode,
         jpegQuality: jpegQuality,
+        originalCamera: originalCamera,
       );
     }
     return ImageCapture.pigeon_new(
@@ -4097,6 +4100,7 @@ class ImageCapture extends UseCase {
       targetRotation: targetRotation,
       flashMode: flashMode,
       jpegQuality: jpegQuality,
+      originalCamera: originalCamera,
     );
   }
 
@@ -4108,6 +4112,7 @@ class ImageCapture extends UseCase {
     int? targetRotation,
     CameraXFlashMode? flashMode,
     int? jpegQuality,
+    CameraInfo? originalCamera,
   }) : super.pigeon_detached() {
     final int pigeonVar_instanceIdentifier = pigeon_instanceManager.addDartCreatedInstance(this);
     final _PigeonInternalProxyApiBaseCodec pigeonChannelCodec = _pigeonVar_codecImageCapture;
@@ -4125,6 +4130,7 @@ class ImageCapture extends UseCase {
       targetRotation,
       flashMode,
       jpegQuality,
+      originalCamera,
     ]);
     () async {
       final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;

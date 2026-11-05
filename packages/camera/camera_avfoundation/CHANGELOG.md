@@ -1,3 +1,7 @@
+## 0.10.3+1
+
+* 在选择 HEIF 编码后统一应用最高分辨率拍摄设置。
+
 ## 0.10.3
 
 * Updates pigeon dev_dependency to ^27.3.2 for analyzer 14 compatibility.
