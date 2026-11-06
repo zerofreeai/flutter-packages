@@ -35,6 +35,10 @@ class AnalyzerProxyApi extends PigeonApiAnalyzer {
 
     @Override
     public void analyze(@NonNull ImageProxy image) {
+      final CameraFrameTap.Consumer consumer = CameraFrameTap.consumer;
+      if (consumer != null && consumer.consume(image, System.nanoTime())) {
+        return;
+      }
       api.getPigeonRegistrar()
           .runOnMainThread(
               new ProxyApiRegistrar.FlutterMethodRunnable() {
