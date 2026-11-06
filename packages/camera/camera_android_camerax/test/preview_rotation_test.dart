@@ -112,6 +112,7 @@ void main() {
           CameraXFlashMode? flashMode,
           ResolutionSelector? resolutionSelector,
           int? jpegQuality,
+          originalCamera,
         }) => MockImageCapture();
     PigeonOverrides.recorder_new =
         ({int? aspectRatio, int? targetVideoEncodingBitRate, QualitySelector? qualitySelector}) =>

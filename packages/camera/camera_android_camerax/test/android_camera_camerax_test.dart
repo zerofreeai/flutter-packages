@@ -170,6 +170,7 @@ void main() {
           CameraXFlashMode? flashMode,
           ResolutionSelector? resolutionSelector,
           int? jpegQuality,
+          originalCamera,
         }) {
           final mockImageCapture = MockImageCapture();
           when(mockImageCapture.resolutionSelector).thenReturn(resolutionSelector);
@@ -531,6 +532,7 @@ void main() {
             CameraXFlashMode? flashMode,
             ResolutionSelector? resolutionSelector,
             int? jpegQuality,
+            originalCamera,
           }) {
             return mockImageCapture;
           };
@@ -1069,6 +1071,7 @@ void main() {
             CameraXFlashMode? flashMode,
             ResolutionSelector? resolutionSelector,
             int? jpegQuality,
+            originalCamera,
           }) {
             return mockImageCapture;
           };
@@ -1476,6 +1479,7 @@ void main() {
           CameraXFlashMode? flashMode,
           ResolutionSelector? resolutionSelector,
           int? jpegQuality,
+          originalCamera,
         }) {
           return mockImageCapture;
         };
@@ -1829,6 +1833,7 @@ void main() {
           CameraXFlashMode? flashMode,
           ResolutionSelector? resolutionSelector,
           int? jpegQuality,
+          originalCamera,
         }) => mockImageCapture;
     PigeonOverrides.recorder_new =
         ({int? aspectRatio, int? targetVideoEncodingBitRate, QualitySelector? qualitySelector}) =>
@@ -2857,6 +2862,7 @@ void main() {
             ResolutionSelector? resolutionSelector,
             int? targetRotation,
             int? jpegQuality,
+            originalCamera,
           }) {
             return mockImageCapture;
           };
@@ -3071,6 +3077,7 @@ void main() {
             ResolutionSelector? resolutionSelector,
             int? targetRotation,
             int? jpegQuality,
+            originalCamera,
           }) {
             return mockImageCapture;
           };
@@ -3327,6 +3334,7 @@ void main() {
           CameraXFlashMode? flashMode,
           ResolutionSelector? resolutionSelector,
           int? jpegQuality,
+          originalCamera,
         }) {
           actualTargetRotation = targetRotation;
           actualJpegQuality = jpegQuality;
@@ -3382,6 +3390,7 @@ void main() {
             CameraXFlashMode? flashMode,
             ResolutionSelector? resolutionSelector,
             int? jpegQuality,
+            originalCamera,
           }) {
             actualTargetRotation = targetRotation;
             actualJpegQuality = jpegQuality;
@@ -3430,6 +3439,7 @@ void main() {
             CameraXFlashMode? flashMode,
             ResolutionSelector? resolutionSelector,
             int? jpegQuality,
+            originalCamera,
           }) {
             return mockNewImageCapture;
           };
