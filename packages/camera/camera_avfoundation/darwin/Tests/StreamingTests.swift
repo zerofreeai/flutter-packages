@@ -76,6 +76,38 @@ final class StreamingTests: XCTestCase {
     return (camera, testAudioOutput, sampleBuffer, audioSampleBuffer, testAudioConnection)
   }
 
+  func testNativeFrameConsumerOwnsFramesUntilDetached() {
+    let (camera, output, buffer, audio, connection) = createCamera()
+    let handler = MockImageStreamHandler()
+    let started = expectation(description: "stream started")
+    camera.startImageStream(with: MockFlutterBinaryMessenger(), imageStreamHandler: handler) { _ in
+      started.fulfill()
+    }
+    waitForExpectations(timeout: 30)
+    var native = 0
+    CameraFrameTap.consumer = { _ in
+      native += 1
+      return true
+    }
+    defer { CameraFrameTap.consumer = nil }
+    handler.eventSinkSuccessStub = { _ in XCTFail("native-owned frames must not be copied to Dart")
+    }
+    for _ in 0..<10 { camera.captureOutput(output, didOutput: buffer, from: connection) }
+    camera.captureOutput(output, didOutput: audio, from: connection)
+    XCTAssertEqual(native, 10)
+    CameraFrameTap.consumer = { _ in false }
+    let dart = expectation(description: "unclaimed frame returns to Dart")
+    handler.eventSinkSuccessStub = { _ in dart.fulfill() }
+    camera.captureOutput(output, didOutput: buffer, from: connection)
+    waitForExpectations(timeout: 30)
+    camera.stopImageStream()
+    CameraFrameTap.consumer = { _ in
+      XCTFail("stopped stream must not call consumer")
+      return true
+    }
+    camera.captureOutput(output, didOutput: buffer, from: connection)
+  }
+
   func testExceedMaxStreamingPendingFramesCount() {
     let (camera, testAudioOutput, sampleBuffer, _, testAudioConnection) = createCamera()
     let handlerMock = MockImageStreamHandler()

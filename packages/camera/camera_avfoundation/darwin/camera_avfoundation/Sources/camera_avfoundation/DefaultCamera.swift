@@ -1360,16 +1360,12 @@ final class DefaultCamera: NSObject, Camera {
 
   private func handleSampleBufferStreaming(_ sampleBuffer: CMSampleBuffer) {
     guard isStreamingImages,
-      let eventSink = imageStreamHandler?.eventSink,
+      let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer)
+    else { return }
+    if CameraFrameTap.consume(sampleBuffer) { return }
+    guard let eventSink = imageStreamHandler?.eventSink,
       streamingPendingFramesCount < maxStreamingPendingFramesCount
-    else {
-      return
-    }
-
-    // Non-pixel buffer samples, such as audio samples, are ignored for streaming
-    guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
-      return
-    }
+    else { return }
 
     streamingPendingFramesCount += 1
 

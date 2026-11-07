@@ -1,3 +1,7 @@
+## 0.10.3+zp.1
+
+* 保留照片质量优先和 HEIF 最高分辨率设置，增加原生帧接管入口。
+
 ## 0.10.3
 
 * Updates pigeon dev_dependency to ^27.3.2 for analyzer 14 compatibility.
