@@ -22,6 +22,15 @@ class SavePhotoDelegate: NSObject, AVCapturePhotoCaptureDelegate {
   /// The queue on which captured photos are written to disk.
   private let ioQueue: DispatchQueue
 
+  private let captureStartedAt = ProcessInfo.processInfo.systemUptime
+
+  private func trace(_ stage: String) {
+    NSLog(
+      "ZeroPixNativeCapture %@ %@ %.3fms",
+      (path as NSString).lastPathComponent, stage,
+      (ProcessInfo.processInfo.systemUptime - captureStartedAt) * 1000)
+  }
+
   /// The completion handler block for capture and save photo operations.
   let completionHandler: SavePhotoDelegateCompletionHandler
 
@@ -45,6 +54,7 @@ class SavePhotoDelegate: NSObject, AVCapturePhotoCaptureDelegate {
     self.ioQueue = ioQueue
     self.completionHandler = completionHandler
     super.init()
+    trace("照片代理就绪")
   }
 
   /// Handler to write captured photo data into a file.
@@ -64,8 +74,11 @@ class SavePhotoDelegate: NSObject, AVCapturePhotoCaptureDelegate {
       guard let strongSelf = self else { return }
 
       do {
+        strongSelf.trace("文件队列开始")
         let data = photoDataProvider()
+        strongSelf.trace("文件编码完成")
         try data?.writeToPath(strongSelf.path, options: .atomic)
+        strongSelf.trace("文件写入完成")
         strongSelf.completionHandler(strongSelf.path, nil)
       } catch {
         strongSelf.completionHandler(nil, error)
@@ -73,11 +86,27 @@ class SavePhotoDelegate: NSObject, AVCapturePhotoCaptureDelegate {
     }
   }
 
+  // 系统曝光前后回调与照片处理分开计时，不能把文件返回延迟当作曝光延迟。
+  func photoOutput(
+    _ output: AVCapturePhotoOutput,
+    willCapturePhotoFor resolvedSettings: AVCaptureResolvedPhotoSettings
+  ) {
+    trace("即将曝光回调")
+  }
+
+  func photoOutput(
+    _ output: AVCapturePhotoOutput,
+    didCapturePhotoFor resolvedSettings: AVCaptureResolvedPhotoSettings
+  ) {
+    trace("已曝光回调")
+  }
+
   func photoOutput(
     _ output: AVCapturePhotoOutput,
     didFinishProcessingPhoto photo: AVCapturePhoto,
     error: Error?
   ) {
+    trace("图像处理回调")
     handlePhotoCaptureResult(error: error) {
       photo.fileDataRepresentation()
     }
