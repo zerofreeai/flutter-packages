@@ -171,6 +171,7 @@ void main() {
           ResolutionSelector? resolutionSelector,
           int? jpegQuality,
           originalCamera,
+          void Function(ImageCapture)? onCaptureStarted,
         }) {
           final mockImageCapture = MockImageCapture();
           when(mockImageCapture.resolutionSelector).thenReturn(resolutionSelector);
@@ -533,6 +534,7 @@ void main() {
             ResolutionSelector? resolutionSelector,
             int? jpegQuality,
             originalCamera,
+            void Function(ImageCapture)? onCaptureStarted,
           }) {
             return mockImageCapture;
           };
@@ -1072,6 +1074,7 @@ void main() {
             ResolutionSelector? resolutionSelector,
             int? jpegQuality,
             originalCamera,
+            void Function(ImageCapture)? onCaptureStarted,
           }) {
             return mockImageCapture;
           };
@@ -1480,6 +1483,7 @@ void main() {
           ResolutionSelector? resolutionSelector,
           int? jpegQuality,
           originalCamera,
+          void Function(ImageCapture)? onCaptureStarted,
         }) {
           return mockImageCapture;
         };
@@ -1834,6 +1838,7 @@ void main() {
           ResolutionSelector? resolutionSelector,
           int? jpegQuality,
           originalCamera,
+          void Function(ImageCapture)? onCaptureStarted,
         }) => mockImageCapture;
     PigeonOverrides.recorder_new =
         ({int? aspectRatio, int? targetVideoEncodingBitRate, QualitySelector? qualitySelector}) =>
@@ -2863,6 +2868,7 @@ void main() {
             int? targetRotation,
             int? jpegQuality,
             originalCamera,
+            void Function(ImageCapture)? onCaptureStarted,
           }) {
             return mockImageCapture;
           };
@@ -3078,6 +3084,7 @@ void main() {
             int? targetRotation,
             int? jpegQuality,
             originalCamera,
+            void Function(ImageCapture)? onCaptureStarted,
           }) {
             return mockImageCapture;
           };
@@ -3335,6 +3342,7 @@ void main() {
           ResolutionSelector? resolutionSelector,
           int? jpegQuality,
           originalCamera,
+          void Function(ImageCapture)? onCaptureStarted,
         }) {
           actualTargetRotation = targetRotation;
           actualJpegQuality = jpegQuality;
@@ -3391,6 +3399,7 @@ void main() {
             ResolutionSelector? resolutionSelector,
             int? jpegQuality,
             originalCamera,
+            void Function(ImageCapture)? onCaptureStarted,
           }) {
             actualTargetRotation = targetRotation;
             actualJpegQuality = jpegQuality;
@@ -3440,6 +3449,7 @@ void main() {
             ResolutionSelector? resolutionSelector,
             int? jpegQuality,
             originalCamera,
+            void Function(ImageCapture)? onCaptureStarted,
           }) {
             return mockNewImageCapture;
           };

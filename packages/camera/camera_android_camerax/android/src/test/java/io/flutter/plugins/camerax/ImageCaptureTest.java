@@ -7,8 +7,10 @@ package io.flutter.plugins.camerax;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -117,6 +119,28 @@ public class ImageCaptureTest {
   }
 
   @Test
+  public void captureStartedNotifiesDartBeforeFileCompletion() {
+    final ImageCaptureProxyApi api = spy(new ImageCaptureProxyApi(new TestProxyApiRegistrar()));
+    final ImageCapture imageCapture = mock(ImageCapture.class);
+    final boolean[] saved = {false};
+    final ImageCapture.OnImageSavedCallback callback =
+        api.createOnImageSavedCallback(
+            imageCapture,
+            mock(File.class),
+            mock(SystemServicesManager.class),
+            ResultCompat.asCompatCallback(
+                reply -> {
+                  saved[0] = true;
+                  return null;
+                }));
+    callback.onCaptureStarted();
+    verify(api).onCaptureStarted(eq(imageCapture), any());
+    assertEquals(false, saved[0]);
+    callback.onImageSaved(mock(ImageCapture.OutputFileResults.class));
+    assertEquals(true, saved[0]);
+  }
+
+  @Test
   public void takePicture_runsCallbackOnTheMainExecutor() {
     final ProxyApiRegistrar apiRegistrar = new TestProxyApiRegistrar();
     apiRegistrar.setContext(ApplicationProvider.getApplicationContext());
@@ -164,13 +188,15 @@ public class ImageCaptureTest {
           @NonNull
           @Override
           ImageCapture.OnImageSavedCallback createOnImageSavedCallback(
+              @NonNull ImageCapture imageCapture,
               @NonNull File file,
               @NonNull SystemServicesManager systemServicesManager,
               @NonNull Function1<? super Result<String>, Unit> callback) {
             final File mockFile = mock(File.class);
             when(mockFile.getAbsolutePath()).thenReturn(filename);
             final ImageCapture.OnImageSavedCallback imageSavedCallback =
-                super.createOnImageSavedCallback(mockFile, systemServicesManager, callback);
+                super.createOnImageSavedCallback(
+                    imageCapture, mockFile, systemServicesManager, callback);
             imageSavedCallback.onImageSaved(mock(ImageCapture.OutputFileResults.class));
             return imageSavedCallback;
           }
@@ -269,11 +295,13 @@ public class ImageCaptureTest {
           @NonNull
           @Override
           ImageCapture.OnImageSavedCallback createOnImageSavedCallback(
+              @NonNull ImageCapture imageCapture,
               @NonNull File file,
               @NonNull SystemServicesManager systemServicesManager,
               @NonNull Function1<? super Result<String>, Unit> callback) {
             final ImageCapture.OnImageSavedCallback imageSavedCallback =
-                super.createOnImageSavedCallback(mock(File.class), systemServicesManager, callback);
+                super.createOnImageSavedCallback(
+                    imageCapture, mock(File.class), systemServicesManager, callback);
             imageSavedCallback.onError(captureException);
             return imageSavedCallback;
           }

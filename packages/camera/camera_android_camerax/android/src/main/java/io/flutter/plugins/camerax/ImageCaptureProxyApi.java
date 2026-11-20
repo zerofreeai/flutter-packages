@@ -119,7 +119,8 @@ class ImageCaptureProxyApi extends PigeonApiImageCapture {
     final ImageCapture.OutputFileOptions outputFileOptions =
         createImageCaptureOutputFileOptions(temporaryCaptureFile);
     final ImageCapture.OnImageSavedCallback onImageSavedCallback =
-        createOnImageSavedCallback(temporaryCaptureFile, systemServicesManager, callback);
+        createOnImageSavedCallback(
+            pigeonInstance, temporaryCaptureFile, systemServicesManager, callback);
 
     pigeonInstance.takePicture(
         outputFileOptions,
@@ -144,10 +145,16 @@ class ImageCaptureProxyApi extends PigeonApiImageCapture {
 
   @NonNull
   ImageCapture.OnImageSavedCallback createOnImageSavedCallback(
+      @NonNull ImageCapture imageCapture,
       @NonNull File file,
       @NonNull SystemServicesManager systemServicesManager,
       @NonNull Function1<? super Result<String>, Unit> callback) {
     return new ImageCapture.OnImageSavedCallback() {
+      @Override
+      public void onCaptureStarted() {
+        ImageCaptureProxyApi.this.onCaptureStarted(imageCapture, reply -> Unit.INSTANCE);
+      }
+
       @Override
       public void onImageSaved(@NonNull ImageCapture.OutputFileResults outputFileResults) {
         ResultCompat.success(file.getAbsolutePath(), callback);

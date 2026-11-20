@@ -4424,6 +4424,42 @@ abstract class PigeonApiImageCapture(
     }
   }
 
+  /** 相机确认开始采集，尚未完成曝光、处理或保存。 */
+  fun onCaptureStarted(
+      pigeon_instanceArg: androidx.camera.core.ImageCapture,
+      callback: (Result<Unit>) -> Unit
+  ) {
+    if (pigeonRegistrar.ignoreCallsToDart) {
+      callback(
+          Result.failure(
+              CameraXError("ignore-calls-error", "Calls to Dart are being ignored.", "")))
+      return
+    } else if (!pigeonRegistrar.instanceManager.containsInstance(pigeon_instanceArg)) {
+      callback(
+          Result.failure(
+              CameraXError(
+                  "missing-instance-error",
+                  "Callback to `ImageCapture.onCaptureStarted` failed because native instance was not in the instance manager.",
+                  "")))
+      return
+    }
+    val binaryMessenger = pigeonRegistrar.binaryMessenger
+    val codec = pigeonRegistrar.codec
+    val channelName = "dev.flutter.pigeon.camera_android_camerax.ImageCapture.onCaptureStarted"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(listOf(pigeon_instanceArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(CameraXError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else {
+          callback(Result.success(Unit))
+        }
+      } else {
+        callback(Result.failure(CameraXLibraryPigeonUtils.createConnectionError(channelName)))
+      }
+    }
+  }
+
   @Suppress("FunctionName")
   /** An implementation of [PigeonApiUseCase] used to access callback methods */
   fun pigeon_getPigeonApiUseCase(): PigeonApiUseCase {

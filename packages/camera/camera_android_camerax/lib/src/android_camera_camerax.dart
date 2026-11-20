@@ -411,8 +411,11 @@ class AndroidCameraCameraX extends CameraPlatform {
 
     _originalCapture = false;
     _analysisCapture = null;
+    final int captureCameraId = _flutterSurfaceTextureId;
     // Configure ImageCapture instance.
     imageCapture = ImageCapture(
+      onCaptureStarted: (_) =>
+          cameraEventStreamController.add(_PhotoCaptureStartedEvent(captureCameraId)),
       resolutionSelector: _presetResolutionSelector,
       /* use CameraX default target rotation */ targetRotation: await deviceOrientationManager
           .getDefaultDisplayRotation(),
@@ -1032,6 +1035,7 @@ class AndroidCameraCameraX extends CameraPlatform {
     }
     final ImageCapture previous = imageCapture!;
     final replacement = ImageCapture(
+      onCaptureStarted: (_) => cameraEventStreamController.add(_PhotoCaptureStartedEvent(cameraId)),
       resolutionSelector: _presetResolutionSelector,
       targetRotation:
           _lockedCaptureOrientation ?? await deviceOrientationManager.getDefaultDisplayRotation(),
@@ -1063,6 +1067,10 @@ class AndroidCameraCameraX extends CameraPlatform {
     }
     _originalCapture = original;
   }
+
+  /// 原生开始采集通知，不表示曝光结束或文件保存完成。
+  Stream<void> onPhotoCaptureStarted(int cameraId) =>
+      _cameraEvents(cameraId).whereType<_PhotoCaptureStartedEvent>().map((_) {});
 
   /// Captures an image using the camera with ID [cameraId] and returns the file where it was saved.
   @override
@@ -1146,6 +1154,7 @@ class AndroidCameraCameraX extends CameraPlatform {
     final int targetRotation =
         _lockedCaptureOrientation ?? await deviceOrientationManager.getDefaultDisplayRotation();
     imageCapture = ImageCapture(
+      onCaptureStarted: (_) => cameraEventStreamController.add(_PhotoCaptureStartedEvent(cameraId)),
       resolutionSelector: _presetResolutionSelector,
       targetRotation: targetRotation,
       jpegQuality: quality,
@@ -1878,4 +1887,8 @@ class AndroidCameraCameraX extends CameraPlatform {
         throw ArgumentError('"$orientation" is not a valid DeviceOrientation value');
     }
   }
+}
+
+class _PhotoCaptureStartedEvent extends CameraEvent {
+  const _PhotoCaptureStartedEvent(super.cameraId);
 }

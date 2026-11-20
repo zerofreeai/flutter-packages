@@ -45,7 +45,14 @@ void main() {
     when(native.getCameraInfo()).thenAnswer((_) async => info);
     when(info.getCameraState()).thenAnswer((_) async => MockLiveCameraState());
     PigeonOverrides.imageCapture_new =
-        ({resolutionSelector, targetRotation, flashMode, jpegQuality, originalCamera}) {
+        ({
+          resolutionSelector,
+          targetRotation,
+          flashMode,
+          jpegQuality,
+          originalCamera,
+          onCaptureStarted,
+        }) {
           expect(originalCamera, same(info));
           return replacement;
         };
@@ -81,8 +88,14 @@ void main() {
     when(native.getCameraInfo()).thenAnswer((_) async => info);
     when(info.getCameraState()).thenAnswer((_) async => MockLiveCameraState());
     PigeonOverrides.imageCapture_new =
-        ({resolutionSelector, targetRotation, flashMode, jpegQuality, originalCamera}) =>
-            replacement;
+        ({
+          resolutionSelector,
+          targetRotation,
+          flashMode,
+          jpegQuality,
+          originalCamera,
+          onCaptureStarted,
+        }) => replacement;
     await camera.configureOriginalCapture(1, true);
     expect(camera.imageCapture, same(previous));
     verify(provider.unbind(<UseCase>[analysis])).called(1);

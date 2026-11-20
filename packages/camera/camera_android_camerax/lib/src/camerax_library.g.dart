@@ -122,6 +122,7 @@ class PigeonOverrides {
   /// Overrides [ImageCapture.new].
   static ImageCapture Function({
     ResolutionSelector? resolutionSelector,
+    void Function(ImageCapture pigeon_instance)? onCaptureStarted,
     int? targetRotation,
     CameraXFlashMode? flashMode,
     int? jpegQuality,
@@ -4079,6 +4080,7 @@ class ImageCapture extends UseCase {
     BinaryMessenger? pigeon_binaryMessenger,
     PigeonInstanceManager? pigeon_instanceManager,
     ResolutionSelector? resolutionSelector,
+    void Function(ImageCapture pigeon_instance)? onCaptureStarted,
     int? targetRotation,
     CameraXFlashMode? flashMode,
     int? jpegQuality,
@@ -4087,6 +4089,7 @@ class ImageCapture extends UseCase {
     if (PigeonOverrides.imageCapture_new != null) {
       return PigeonOverrides.imageCapture_new!(
         resolutionSelector: resolutionSelector,
+        onCaptureStarted: onCaptureStarted,
         targetRotation: targetRotation,
         flashMode: flashMode,
         jpegQuality: jpegQuality,
@@ -4097,6 +4100,7 @@ class ImageCapture extends UseCase {
       pigeon_binaryMessenger: pigeon_binaryMessenger,
       pigeon_instanceManager: pigeon_instanceManager,
       resolutionSelector: resolutionSelector,
+      onCaptureStarted: onCaptureStarted,
       targetRotation: targetRotation,
       flashMode: flashMode,
       jpegQuality: jpegQuality,
@@ -4109,6 +4113,7 @@ class ImageCapture extends UseCase {
     super.pigeon_binaryMessenger,
     super.pigeon_instanceManager,
     this.resolutionSelector,
+    this.onCaptureStarted,
     int? targetRotation,
     CameraXFlashMode? flashMode,
     int? jpegQuality,
@@ -4148,6 +4153,7 @@ class ImageCapture extends UseCase {
     super.pigeon_binaryMessenger,
     super.pigeon_instanceManager,
     this.resolutionSelector,
+    this.onCaptureStarted,
   }) : super.pigeon_detached();
 
   late final _PigeonInternalProxyApiBaseCodec _pigeonVar_codecImageCapture =
@@ -4155,11 +4161,33 @@ class ImageCapture extends UseCase {
 
   final ResolutionSelector? resolutionSelector;
 
+  /// 相机确认开始采集，尚未完成曝光、处理或保存。
+  ///
+  /// For the associated Native object to be automatically garbage collected,
+  /// it is required that the implementation of this `Function` doesn't have a
+  /// strong reference to the encapsulating class instance. When this `Function`
+  /// references a non-local variable, it is strongly recommended to access it
+  /// with a `WeakReference`:
+  ///
+  /// ```dart
+  /// final WeakReference weakMyVariable = WeakReference(myVariable);
+  /// final ImageCapture instance = ImageCapture(
+  ///  onCaptureStarted: (ImageCapture pigeon_instance, ...) {
+  ///    print(weakMyVariable?.target);
+  ///  },
+  /// );
+  /// ```
+  ///
+  /// Alternatively, [PigeonInstanceManager.removeWeakReference] can be used to
+  /// release the associated Native object manually.
+  final void Function(ImageCapture pigeon_instance)? onCaptureStarted;
+
   static void pigeon_setUpMessageHandlers({
     bool pigeon_clearHandlers = false,
     BinaryMessenger? pigeon_binaryMessenger,
     PigeonInstanceManager? pigeon_instanceManager,
     ImageCapture Function(ResolutionSelector? resolutionSelector)? pigeon_newInstance,
+    void Function(ImageCapture pigeon_instance)? onCaptureStarted,
   }) {
     final _PigeonInternalProxyApiBaseCodec pigeonChannelCodec = _PigeonInternalProxyApiBaseCodec(
       pigeon_instanceManager ?? PigeonInstanceManager.instance,
@@ -4188,6 +4216,32 @@ class ImageCapture extends UseCase {
                   ),
               arg_pigeon_instanceIdentifier,
             );
+            return wrapResponse(empty: true);
+          } on PlatformException catch (e) {
+            return wrapResponse(error: e);
+          } catch (e) {
+            return wrapResponse(
+              error: PlatformException(code: 'error', message: e.toString()),
+            );
+          }
+        });
+      }
+    }
+
+    {
+      final pigeonVar_channel = BasicMessageChannel<Object?>(
+        'dev.flutter.pigeon.camera_android_camerax.ImageCapture.onCaptureStarted',
+        pigeonChannelCodec,
+        binaryMessenger: binaryMessenger,
+      );
+      if (pigeon_clearHandlers) {
+        pigeonVar_channel.setMessageHandler(null);
+      } else {
+        pigeonVar_channel.setMessageHandler((Object? message) async {
+          final List<Object?> args = message! as List<Object?>;
+          final ImageCapture arg_pigeon_instance = args[0]! as ImageCapture;
+          try {
+            (onCaptureStarted ?? arg_pigeon_instance.onCaptureStarted)?.call(arg_pigeon_instance);
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
@@ -4266,6 +4320,7 @@ class ImageCapture extends UseCase {
       pigeon_binaryMessenger: pigeon_binaryMessenger,
       pigeon_instanceManager: pigeon_instanceManager,
       resolutionSelector: resolutionSelector,
+      onCaptureStarted: onCaptureStarted,
     );
   }
 }
