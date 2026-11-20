@@ -705,6 +705,7 @@ final class DefaultCamera: NSObject, Camera {
   }
 
   func captureToFile(completion: @escaping (Result<String, any Error>) -> Void) {
+    let preparationStartedAt = ProcessInfo.processInfo.systemUptime
     var settings = AVCapturePhotoSettings()
 
     let fileExtension: String
@@ -746,6 +747,10 @@ final class DefaultCamera: NSObject, Camera {
       return
     }
 
+    NSLog(
+      "ZeroPixNativeCapture %@ 照片配置完成 %.3fms",
+      (path as NSString).lastPathComponent,
+      (ProcessInfo.processInfo.systemUptime - preparationStartedAt) * 1000)
     let savePhotoDelegate = SavePhotoDelegate(
       path: path,
       ioQueue: photoIOQueue,
