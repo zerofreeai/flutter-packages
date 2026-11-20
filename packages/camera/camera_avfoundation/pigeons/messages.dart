@@ -362,6 +362,9 @@ abstract class CameraGlobalEventApi {
 /// This is intended to be initialized with the camera ID as a suffix.
 @FlutterApi()
 abstract class CameraEventApi {
+  /// 照片曝光完成，图像处理与文件保存尚未完成。
+  void photoCaptured();
+
   /// Called when the camera is inialitized for use.
   @ObjCSelector('initializedWithState:')
   void initialized(PlatformCameraState initialState);

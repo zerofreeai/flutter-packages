@@ -33,6 +33,7 @@ class SavePhotoDelegate: NSObject, AVCapturePhotoCaptureDelegate {
 
   /// The completion handler block for capture and save photo operations.
   let completionHandler: SavePhotoDelegateCompletionHandler
+  private let captureHandler: (() -> Void)?
 
   /// The path for captured photo file.
   /// Exposed for unit tests to verify the captured photo file path.
@@ -48,10 +49,12 @@ class SavePhotoDelegate: NSObject, AVCapturePhotoCaptureDelegate {
   init(
     path: String,
     ioQueue: DispatchQueue,
+    captureHandler: (() -> Void)? = nil,
     completionHandler: @escaping SavePhotoDelegateCompletionHandler
   ) {
     self.path = path
     self.ioQueue = ioQueue
+    self.captureHandler = captureHandler
     self.completionHandler = completionHandler
     super.init()
     trace("照片代理就绪")
@@ -99,6 +102,7 @@ class SavePhotoDelegate: NSObject, AVCapturePhotoCaptureDelegate {
     didCapturePhotoFor resolvedSettings: AVCaptureResolvedPhotoSettings
   ) {
     trace("已曝光回调")
+    captureHandler?()
   }
 
   func photoOutput(

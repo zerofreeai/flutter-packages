@@ -754,6 +754,13 @@ final class DefaultCamera: NSObject, Camera {
     let savePhotoDelegate = SavePhotoDelegate(
       path: path,
       ioQueue: photoIOQueue,
+      captureHandler: { [weak self] in
+        ensureToRunOnMainQueue { [weak self] in
+          self?.dartAPI?.photoCaptured { _ in
+            // 反馈事件不决定照片处理结果。
+          }
+        }
+      },
       completionHandler: { [weak self] path, error in
         guard let strongSelf = self else { return }
 

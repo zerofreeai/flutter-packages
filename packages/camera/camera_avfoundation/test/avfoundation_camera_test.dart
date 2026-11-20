@@ -225,6 +225,23 @@ void main() {
       await initializeFuture;
     });
 
+    test('曝光完成事件按相机隔离，取消监听后不再反馈', () async {
+      final other = HostCameraMessageHandler(cameraId + 1, camera.cameraEventStreamController);
+      var captures = 0;
+      final StreamSubscription<void> subscription = camera
+          .onPhotoCaptured(cameraId)
+          .listen((_) => captures++);
+      other.photoCaptured();
+      camera.hostCameraHandlers[cameraId]!.photoCaptured();
+      await Future<void>.delayed(Duration.zero);
+      expect(captures, 1);
+      await subscription.cancel();
+      camera.hostCameraHandlers[cameraId]!.photoCaptured();
+      await Future<void>.delayed(Duration.zero);
+      expect(captures, 1);
+      other.dispose();
+    });
+
     test('Should receive initialized event', () async {
       // Act
       final Stream<CameraInitializedEvent> eventStream = camera.onCameraInitialized(cameraId);

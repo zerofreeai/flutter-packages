@@ -177,6 +177,10 @@ class AVFoundationCamera extends CameraPlatform {
     await _hostApi.unlockCaptureOrientation();
   }
 
+  /// 照片曝光完成通知；不能用作照片保存成功通知。
+  Stream<void> onPhotoCaptured(int cameraId) =>
+      _cameraEvents(cameraId).whereType<_PhotoCapturedEvent>().map((_) {});
+
   @override
   Future<XFile> takePicture(int cameraId) async {
     final String path = await _hostApi.takePicture();
@@ -607,6 +611,10 @@ class HostDeviceMessageHandler implements CameraGlobalEventApi {
   }
 }
 
+class _PhotoCapturedEvent extends CameraEvent {
+  const _PhotoCapturedEvent(super.cameraId);
+}
+
 /// Callback handler for camera-level events from the platform host.
 @visibleForTesting
 class HostCameraMessageHandler implements CameraEventApi {
@@ -627,6 +635,11 @@ class HostCameraMessageHandler implements CameraEventApi {
   /// The controller used to broadcast camera events coming from the
   /// host platform.
   final StreamController<CameraEvent> streamController;
+
+  @override
+  void photoCaptured() {
+    streamController.add(_PhotoCapturedEvent(cameraId));
+  }
 
   @override
   void error(String message) {

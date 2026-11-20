@@ -1331,6 +1331,9 @@ abstract class CameraGlobalEventApi {
 abstract class CameraEventApi {
   static const MessageCodec<Object?> pigeonChannelCodec = _PigeonCodec();
 
+  /// 照片曝光完成，图像处理与文件保存尚未完成。
+  void photoCaptured();
+
   /// Called when the camera is inialitized for use.
   void initialized(PlatformCameraState initialState);
 
@@ -1346,6 +1349,29 @@ abstract class CameraEventApi {
     String messageChannelSuffix = '',
   }) {
     messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
+    {
+      final pigeonVar_channel = BasicMessageChannel<Object?>(
+        'dev.flutter.pigeon.camera_avfoundation.CameraEventApi.photoCaptured$messageChannelSuffix',
+        pigeonChannelCodec,
+        binaryMessenger: binaryMessenger,
+      );
+      if (api == null) {
+        pigeonVar_channel.setMessageHandler(null);
+      } else {
+        pigeonVar_channel.setMessageHandler((Object? message) async {
+          try {
+            api.photoCaptured();
+            return wrapResponse(empty: true);
+          } on PlatformException catch (e) {
+            return wrapResponse(error: e);
+          } catch (e) {
+            return wrapResponse(
+              error: PlatformException(code: 'error', message: e.toString()),
+            );
+          }
+        });
+      }
+    }
     {
       final pigeonVar_channel = BasicMessageChannel<Object?>(
         'dev.flutter.pigeon.camera_avfoundation.CameraEventApi.initialized$messageChannelSuffix',
