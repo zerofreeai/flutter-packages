@@ -229,6 +229,10 @@ abstract class CameraApi {
   @async
   String takePicture();
 
+  /// 提交独立拍摄，文件交付与再次可拍通知分离。
+  @async
+  String capturePhoto(int requestId);
+
   /// Does any preprocessing necessary before beginning to record video.
   @async
   void prepareForVideoRecording();
@@ -364,6 +368,9 @@ abstract class CameraGlobalEventApi {
 abstract class CameraEventApi {
   /// 照片曝光完成，图像处理与文件保存尚未完成。
   void photoCaptured();
+
+  /// 指定拍摄已结束采集，相机可以接受下一张。
+  void photoCaptureReady(int requestId);
 
   /// Called when the camera is inialitized for use.
   @ObjCSelector('initializedWithState:')

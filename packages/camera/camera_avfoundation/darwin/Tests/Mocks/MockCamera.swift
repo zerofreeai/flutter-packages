@@ -129,7 +129,9 @@ final class MockCamera: NSObject, Camera {
     stopVideoRecordingStub?(completion)
   }
 
-  func captureToFile(completion: @escaping (Result<String, any Error>) -> Void) {
+  func captureToFile(
+    readyHandler: (() -> Void)?, completion: @escaping (Result<String, any Error>) -> Void
+  ) {
     captureToFileStub?(completion)
   }
 

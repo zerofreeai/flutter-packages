@@ -836,6 +836,8 @@ protocol CameraApi {
   /// Takes a picture with the current settings, and returns the path to the
   /// resulting file.
   func takePicture(completion: @escaping (Result<String, Error>) -> Void)
+  /// 提交独立拍摄，文件交付与再次可拍通知分离。
+  func capturePhoto(requestId: Int64, completion: @escaping (Result<String, Error>) -> Void)
   /// Does any preprocessing necessary before beginning to record video.
   func prepareForVideoRecording(completion: @escaping (Result<Void, Error>) -> Void)
   /// Begins recording video, optionally enabling streaming to Dart at the same
@@ -1102,6 +1104,26 @@ class CameraApiSetup {
       }
     } else {
       takePictureChannel.setMessageHandler(nil)
+    }
+    /// 提交独立拍摄，文件交付与再次可拍通知分离。
+    let capturePhotoChannel = FlutterBasicMessageChannel(
+      name: "dev.flutter.pigeon.camera_avfoundation.CameraApi.capturePhoto\(channelSuffix)",
+      binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      capturePhotoChannel.setMessageHandler { message, reply in
+        let args = message as! [Any?]
+        let requestIdArg = args[0] as! Int64
+        api.capturePhoto(requestId: requestIdArg) { result in
+          switch result {
+          case .success(let res):
+            reply(wrapResult(res))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      capturePhotoChannel.setMessageHandler(nil)
     }
     /// Does any preprocessing necessary before beginning to record video.
     let prepareForVideoRecordingChannel = FlutterBasicMessageChannel(
@@ -1677,6 +1699,9 @@ class CameraGlobalEventApi: CameraGlobalEventApiProtocol {
 protocol CameraEventApiProtocol {
   /// 照片曝光完成，图像处理与文件保存尚未完成。
   func photoCaptured(completion: @escaping (Result<Void, PigeonError>) -> Void)
+  /// 指定拍摄已结束采集，相机可以接受下一张。
+  func photoCaptureReady(
+    requestId requestIdArg: Int64, completion: @escaping (Result<Void, PigeonError>) -> Void)
   /// Called when the camera is inialitized for use.
   func initialized(
     initialState initialStateArg: PlatformCameraState,
@@ -1704,6 +1729,29 @@ class CameraEventApi: CameraEventApiProtocol {
     let channel = FlutterBasicMessageChannel(
       name: channelName, binaryMessenger: binaryMessenger, codec: codec)
     channel.sendMessage(nil) { response in
+      guard let listResponse = response as? [Any?] else {
+        completion(.failure(createConnectionError(withChannelName: channelName)))
+        return
+      }
+      if listResponse.count > 1 {
+        let code: String = listResponse[0] as! String
+        let message: String? = nilOrValue(listResponse[1])
+        let details: String? = nilOrValue(listResponse[2])
+        completion(.failure(PigeonError(code: code, message: message, details: details)))
+      } else {
+        completion(.success(()))
+      }
+    }
+  }
+  /// 指定拍摄已结束采集，相机可以接受下一张。
+  func photoCaptureReady(
+    requestId requestIdArg: Int64, completion: @escaping (Result<Void, PigeonError>) -> Void
+  ) {
+    let channelName: String =
+      "dev.flutter.pigeon.camera_avfoundation.CameraEventApi.photoCaptureReady\(messageChannelSuffix)"
+    let channel = FlutterBasicMessageChannel(
+      name: channelName, binaryMessenger: binaryMessenger, codec: codec)
+    channel.sendMessage([requestIdArg] as [Any?]) { response in
       guard let listResponse = response as? [Any?] else {
         completion(.failure(createConnectionError(withChannelName: channelName)))
         return

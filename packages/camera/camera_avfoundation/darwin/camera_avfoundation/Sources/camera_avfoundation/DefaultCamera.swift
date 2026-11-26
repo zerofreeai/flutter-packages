@@ -76,6 +76,19 @@ final class DefaultCamera: NSObject, Camera {
   /// SavePhotoDelegate that handles the result of each photo capture operation. Note that photo
   /// capture operations may overlap, so FLTCam has to keep track of multiple delegates in progress,
   /// instead of just a single delegate reference.
+  private var captureReadinessObservation: NSKeyValueObservation?
+  private var captureReadyHandlers = [Int64: () -> Void]()
+
+  // 仅在采集完成且系统就绪后放行下一张，质量优先时由系统决定是否仍需等待处理。
+  private func deliverCaptureReadiness() {
+    if #available(iOS 17.0, *) {
+      guard capturePhotoOutput.avOutput.captureReadiness == .ready else { return }
+    }
+    let handlers = captureReadyHandlers.values
+    captureReadyHandlers.removeAll()
+    for handler in handlers { handler() }
+  }
+
   private(set) var inProgressSavePhotoDelegates = [Int64: SavePhotoDelegate]()
 
   private var imageStreamHandler: ImageStreamHandler?
@@ -234,6 +247,19 @@ final class DefaultCamera: NSObject, Camera {
       try setCaptureSessionPreset(mediaSettings.resolutionPreset)
     }
 
+    if #available(iOS 17.0, *) {
+      let output = capturePhotoOutput.avOutput
+      if output.isZeroShutterLagSupported { output.isZeroShutterLagEnabled = true }
+      if output.isResponsiveCaptureSupported { output.isResponsiveCaptureEnabled = true }
+      NSLog(
+        "ZeroPixNativeCapture 会话配置 零快门=%d 响应式拍摄=%d 质量优先=1",
+        output.isZeroShutterLagEnabled, output.isResponsiveCaptureEnabled)
+      captureReadinessObservation = output.observe(\.captureReadiness) { [weak self] _, _ in
+        self?.captureSessionQueue.async { [weak self] in
+          self?.deliverCaptureReadiness()
+        }
+      }
+    }
     updateOrientation()
 
     // Handle video and audio interruptions and errors. Interruption can happen for example by
@@ -704,7 +730,10 @@ final class DefaultCamera: NSObject, Camera {
     }
   }
 
-  func captureToFile(completion: @escaping (Result<String, any Error>) -> Void) {
+  func captureToFile(
+    readyHandler: (() -> Void)? = nil,
+    completion: @escaping (Result<String, any Error>) -> Void
+  ) {
     let preparationStartedAt = ProcessInfo.processInfo.systemUptime
     var settings = AVCapturePhotoSettings()
 
@@ -755,6 +784,11 @@ final class DefaultCamera: NSObject, Camera {
       path: path,
       ioQueue: photoIOQueue,
       captureHandler: { [weak self] in
+        self?.captureSessionQueue.async { [weak self] in
+          guard let self, let readyHandler else { return }
+          self.captureReadyHandlers[settings.uniqueID] = readyHandler
+          self.deliverCaptureReadiness()
+        }
         ensureToRunOnMainQueue { [weak self] in
           self?.dartAPI?.photoCaptured { _ in
             // 反馈事件不决定照片处理结果。
@@ -766,6 +800,7 @@ final class DefaultCamera: NSObject, Camera {
 
         strongSelf.captureSessionQueue.async { [weak self] in
           self?.inProgressSavePhotoDelegates.removeValue(forKey: settings.uniqueID)
+          self?.captureReadyHandlers.removeValue(forKey: settings.uniqueID)?()
         }
 
         if let error = error {

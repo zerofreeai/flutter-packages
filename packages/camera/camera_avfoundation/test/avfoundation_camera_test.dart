@@ -204,10 +204,11 @@ void main() {
   });
 
   group('Event Tests', () {
+    late MockCameraApi mockApi;
     late AVFoundationCamera camera;
     late int cameraId;
     setUp(() async {
-      final mockApi = MockCameraApi();
+      mockApi = MockCameraApi();
       when(mockApi.create(any, any)).thenAnswer((_) async => 1);
       camera = AVFoundationCamera(api: mockApi);
       cameraId = await camera.createCamera(
@@ -240,6 +241,46 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       expect(captures, 1);
       other.dispose();
+    });
+
+    test('连续拍摄的就绪和文件分别按请求交付，结果乱序也不串片', () async {
+      final files = <Completer<String>>[];
+      final ids = <int>[];
+      when(mockApi.capturePhoto(any)).thenAnswer((call) {
+        ids.add(call.positionalArguments.single as int);
+        final file = Completer<String>();
+        files.add(file);
+        return file.future;
+      });
+      final ({Future<void> ready, Future<XFile> result}) first = camera.capturePhoto(cameraId);
+      final ({Future<void> ready, Future<XFile> result}) second = camera.capturePhoto(cameraId);
+      var firstReady = false;
+      var secondReady = false;
+      unawaited(first.ready.then((_) => firstReady = true));
+      unawaited(second.ready.then((_) => secondReady = true));
+      camera.hostCameraHandlers[cameraId]!.photoCaptureReady(ids[0]);
+      await Future<void>.delayed(Duration.zero);
+      expect(firstReady, isTrue);
+      expect(secondReady, isFalse);
+      files[1].complete('/second.jpg');
+      expect((await second.result).path, '/second.jpg');
+      await second.ready;
+      files[0].complete('/first.heif');
+      expect((await first.result).path, '/first.heif');
+    });
+
+    test('采集失败释放等待并保留原始错误，后续拍摄仍能返回', () async {
+      final file = Completer<String>();
+      when(mockApi.capturePhoto(any)).thenAnswer((_) => file.future);
+      final ({Future<void> ready, Future<XFile> result}) capture = camera.capturePhoto(cameraId);
+      final Future<void> failure = expectLater(capture.result, throwsA(isA<PlatformException>()));
+      file.completeError(PlatformException(code: 'capture_failed'));
+      await failure;
+      await capture.ready;
+      when(mockApi.capturePhoto(any)).thenAnswer((_) async => '/next.jpg');
+      final ({Future<void> ready, Future<XFile> result}) next = camera.capturePhoto(cameraId);
+      expect((await next.result).path, '/next.jpg');
+      await next.ready;
     });
 
     test('Should receive initialized event', () async {
