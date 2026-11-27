@@ -1,3 +1,8 @@
+## 0.7.4+8.zp.3
+
+* Keeps `ImageCapture` capture-start callbacks from retaining the plugin instance.
+* Documents that `onPhotoCaptureStarted` fires for every capture and carries no request ID.
+
 ## 0.7.4+8.zp.2
 
 * 通过原生采集开始事件提前反馈自动拍快门，保持画质优先、HDR 和文件完成回调不变。

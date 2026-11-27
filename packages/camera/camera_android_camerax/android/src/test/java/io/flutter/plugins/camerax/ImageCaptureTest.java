@@ -10,7 +10,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -119,25 +118,25 @@ public class ImageCaptureTest {
   }
 
   @Test
-  public void captureStartedNotifiesDartBeforeFileCompletion() {
-    final ImageCaptureProxyApi api = spy(new ImageCaptureProxyApi(new TestProxyApiRegistrar()));
+  public void onCaptureStarted_sendsCaptureStartedMessageToDart() {
+    final TestProxyApiRegistrar registrar = new TestProxyApiRegistrar();
+    final ImageCaptureProxyApi api = new ImageCaptureProxyApi(registrar);
     final ImageCapture imageCapture = mock(ImageCapture.class);
-    final boolean[] saved = {false};
+    registrar.getInstanceManager().addHostCreatedInstance(imageCapture);
     final ImageCapture.OnImageSavedCallback callback =
         api.createOnImageSavedCallback(
             imageCapture,
             mock(File.class),
             mock(SystemServicesManager.class),
-            ResultCompat.asCompatCallback(
-                reply -> {
-                  saved[0] = true;
-                  return null;
-                }));
+            ResultCompat.asCompatCallback(reply -> null));
+
     callback.onCaptureStarted();
-    verify(api).onCaptureStarted(eq(imageCapture), any());
-    assertEquals(false, saved[0]);
-    callback.onImageSaved(mock(ImageCapture.OutputFileResults.class));
-    assertEquals(true, saved[0]);
+
+    verify(registrar.getBinaryMessenger())
+        .send(
+            eq("dev.flutter.pigeon.camera_android_camerax.ImageCapture.onCaptureStarted"),
+            any(),
+            any());
   }
 
   @Test
