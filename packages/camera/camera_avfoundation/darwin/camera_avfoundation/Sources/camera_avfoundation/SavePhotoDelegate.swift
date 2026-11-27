@@ -25,6 +25,9 @@ class SavePhotoDelegate: NSObject, AVCapturePhotoCaptureDelegate {
   /// The completion handler block for capture and save photo operations.
   let completionHandler: SavePhotoDelegateCompletionHandler
 
+  /// Called once the photo has been captured, before it is processed and written to disk.
+  private let captureHandler: (() -> Void)?
+
   /// The path for captured photo file.
   /// Exposed for unit tests to verify the captured photo file path.
   var filePath: String {
@@ -34,15 +37,19 @@ class SavePhotoDelegate: NSObject, AVCapturePhotoCaptureDelegate {
   /// Initialize a photo capture delegate.
   /// path - the path for captured photo file.
   /// ioQueue - the queue on which captured photos are written to disk.
+  /// captureHandler - Called from the photo output's delegate queue once the photo has been
+  /// captured, before processing and saving finish.
   /// completionHandler - The completion handler block for save photo operations. Can
   /// be called from either main queue or IO queue.
   init(
     path: String,
     ioQueue: DispatchQueue,
+    captureHandler: (() -> Void)? = nil,
     completionHandler: @escaping SavePhotoDelegateCompletionHandler
   ) {
     self.path = path
     self.ioQueue = ioQueue
+    self.captureHandler = captureHandler
     self.completionHandler = completionHandler
     super.init()
   }
@@ -71,6 +78,13 @@ class SavePhotoDelegate: NSObject, AVCapturePhotoCaptureDelegate {
         strongSelf.completionHandler(nil, error)
       }
     }
+  }
+
+  func photoOutput(
+    _ output: AVCapturePhotoOutput,
+    didCapturePhotoFor resolvedSettings: AVCaptureResolvedPhotoSettings
+  ) {
+    captureHandler?()
   }
 
   func photoOutput(

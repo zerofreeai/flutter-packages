@@ -71,6 +71,21 @@ final class DefaultCamera: NSObject, Camera {
   private var assetWriterPixelBufferAdaptor: AssetWriterInputPixelBufferAdaptor?
   private var videoAdaptor: AssetWriterInputPixelBufferAdaptor?
 
+  private var captureReadinessObservation: NSKeyValueObservation?
+  private var captureReadyHandlers = [Int64: () -> Void]()
+
+  // Releases captured requests once the photo output can take the next photo. With quality
+  // prioritization the system decides whether that still waits for processing. Before iOS 17
+  // there is no readiness signal, so requests are released as soon as they are captured.
+  private func deliverCaptureReadiness() {
+    if #available(iOS 17.0, *) {
+      guard capturePhotoOutput.avOutput.captureReadiness == .ready else { return }
+    }
+    let handlers = captureReadyHandlers.values
+    captureReadyHandlers.removeAll()
+    for handler in handlers { handler() }
+  }
+
   /// A dictionary to retain all in-progress SavePhotoDelegates. The key of the dictionary is the
   /// AVCapturePhotoSettings's uniqueID for each photo capture operation, and the value is the
   /// SavePhotoDelegate that handles the result of each photo capture operation. Note that photo
@@ -234,6 +249,16 @@ final class DefaultCamera: NSObject, Camera {
       try setCaptureSessionPreset(mediaSettings.resolutionPreset)
     }
 
+    if #available(iOS 17.0, *) {
+      let output = capturePhotoOutput.avOutput
+      if output.isZeroShutterLagSupported { output.isZeroShutterLagEnabled = true }
+      if output.isResponsiveCaptureSupported { output.isResponsiveCaptureEnabled = true }
+      captureReadinessObservation = output.observe(\.captureReadiness) { [weak self] _, _ in
+        self?.captureSessionQueue.async { [weak self] in
+          self?.deliverCaptureReadiness()
+        }
+      }
+    }
     updateOrientation()
 
     // Handle video and audio interruptions and errors. Interruption can happen for example by
@@ -704,7 +729,10 @@ final class DefaultCamera: NSObject, Camera {
     }
   }
 
-  func captureToFile(completion: @escaping (Result<String, any Error>) -> Void) {
+  func captureToFile(
+    readyHandler: (() -> Void)? = nil,
+    completion: @escaping (Result<String, any Error>) -> Void
+  ) {
     var settings = AVCapturePhotoSettings()
 
     let fileExtension: String
@@ -749,11 +777,26 @@ final class DefaultCamera: NSObject, Camera {
     let savePhotoDelegate = SavePhotoDelegate(
       path: path,
       ioQueue: photoIOQueue,
+      captureHandler: { [weak self] in
+        // Queue photoCaptured on the main queue before the ready handler can be queued there, so
+        // Dart always receives this photo's captured event before its ready event.
+        ensureToRunOnMainQueue { [weak self] in
+          self?.dartAPI?.photoCaptured { _ in
+            // Ignore any errors, as this is just an event broadcast.
+          }
+        }
+        self?.captureSessionQueue.async { [weak self] in
+          guard let self, let readyHandler else { return }
+          self.captureReadyHandlers[settings.uniqueID] = readyHandler
+          self.deliverCaptureReadiness()
+        }
+      },
       completionHandler: { [weak self] path, error in
         guard let strongSelf = self else { return }
 
         strongSelf.captureSessionQueue.async { [weak self] in
           self?.inProgressSavePhotoDelegates.removeValue(forKey: settings.uniqueID)
+          self?.captureReadyHandlers.removeValue(forKey: settings.uniqueID)?()
         }
 
         if let error = error {

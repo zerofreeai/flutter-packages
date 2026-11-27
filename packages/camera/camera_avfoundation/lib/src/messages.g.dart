@@ -882,6 +882,26 @@ class CameraApi {
     return pigeonVar_replyValue! as String;
   }
 
+  /// 提交独立拍摄，文件交付与再次可拍通知分离。
+  Future<String> capturePhoto(int requestId) async {
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.camera_avfoundation.CameraApi.capturePhoto$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[requestId]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
+    return pigeonVar_replyValue! as String;
+  }
+
   /// Does any preprocessing necessary before beginning to record video.
   Future<void> prepareForVideoRecording() async {
     final pigeonVar_channelName =
@@ -1331,6 +1351,12 @@ abstract class CameraGlobalEventApi {
 abstract class CameraEventApi {
   static const MessageCodec<Object?> pigeonChannelCodec = _PigeonCodec();
 
+  /// 照片曝光完成，图像处理与文件保存尚未完成。
+  void photoCaptured();
+
+  /// 指定拍摄已结束采集，相机可以接受下一张。
+  void photoCaptureReady(int requestId);
+
   /// Called when the camera is inialitized for use.
   void initialized(PlatformCameraState initialState);
 
@@ -1346,6 +1372,54 @@ abstract class CameraEventApi {
     String messageChannelSuffix = '',
   }) {
     messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
+    {
+      final pigeonVar_channel = BasicMessageChannel<Object?>(
+        'dev.flutter.pigeon.camera_avfoundation.CameraEventApi.photoCaptured$messageChannelSuffix',
+        pigeonChannelCodec,
+        binaryMessenger: binaryMessenger,
+      );
+      if (api == null) {
+        pigeonVar_channel.setMessageHandler(null);
+      } else {
+        pigeonVar_channel.setMessageHandler((Object? message) async {
+          try {
+            api.photoCaptured();
+            return wrapResponse(empty: true);
+          } on PlatformException catch (e) {
+            return wrapResponse(error: e);
+          } catch (e) {
+            return wrapResponse(
+              error: PlatformException(code: 'error', message: e.toString()),
+            );
+          }
+        });
+      }
+    }
+    {
+      final pigeonVar_channel = BasicMessageChannel<Object?>(
+        'dev.flutter.pigeon.camera_avfoundation.CameraEventApi.photoCaptureReady$messageChannelSuffix',
+        pigeonChannelCodec,
+        binaryMessenger: binaryMessenger,
+      );
+      if (api == null) {
+        pigeonVar_channel.setMessageHandler(null);
+      } else {
+        pigeonVar_channel.setMessageHandler((Object? message) async {
+          final List<Object?> args = message! as List<Object?>;
+          final int arg_requestId = args[0]! as int;
+          try {
+            api.photoCaptureReady(arg_requestId);
+            return wrapResponse(empty: true);
+          } on PlatformException catch (e) {
+            return wrapResponse(error: e);
+          } catch (e) {
+            return wrapResponse(
+              error: PlatformException(code: 'error', message: e.toString()),
+            );
+          }
+        });
+      }
+    }
     {
       final pigeonVar_channel = BasicMessageChannel<Object?>(
         'dev.flutter.pigeon.camera_avfoundation.CameraEventApi.initialized$messageChannelSuffix',

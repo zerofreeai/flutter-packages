@@ -177,6 +177,40 @@ class AVFoundationCamera extends CameraPlatform {
     await _hostApi.unlockCaptureOrientation();
   }
 
+  /// Emits when a photo has been captured, before it is processed and saved.
+  ///
+  /// Not a save confirmation. Events carry no request ID and fire for every capture on
+  /// [cameraId], including [takePicture]. For a [capturePhoto] request, the platform sends this
+  /// event before that request's ready event.
+  Stream<void> onPhotoCaptured(int cameraId) =>
+      _cameraEvents(cameraId).whereType<_PhotoCapturedEvent>().map((_) {});
+
+  int _captureRequestId = 0;
+
+  /// 相机就绪与照片文件分别交付；每个请求独立关联，不让后续曝光串到上一张。
+  ({Future<void> ready, Future<XFile> result}) capturePhoto(int cameraId) {
+    final int requestId = _captureRequestId++;
+    final ready = Completer<void>();
+    final StreamSubscription<_PhotoCaptureReadyEvent> subscription = _cameraEvents(cameraId)
+        .whereType<_PhotoCaptureReadyEvent>()
+        .listen((event) {
+          if (event.requestId == requestId && !ready.isCompleted) {
+            ready.complete();
+          }
+        });
+    final Future<XFile> result = _hostApi.capturePhoto(requestId).then(XFile.new);
+    // 失败也释放就绪等待；错误由照片结果唯一交付，不产生无人监听的第二份异常。
+    unawaited(
+      result.then<void>((_) {}, onError: (Object _) {}).whenComplete(() async {
+        if (!ready.isCompleted) {
+          ready.complete();
+        }
+        await subscription.cancel();
+      }),
+    );
+    return (ready: ready.future, result: result);
+  }
+
   @override
   Future<XFile> takePicture(int cameraId) async {
     final String path = await _hostApi.takePicture();
@@ -607,6 +641,15 @@ class HostDeviceMessageHandler implements CameraGlobalEventApi {
   }
 }
 
+class _PhotoCaptureReadyEvent extends CameraEvent {
+  const _PhotoCaptureReadyEvent(super.cameraId, this.requestId);
+  final int requestId;
+}
+
+class _PhotoCapturedEvent extends CameraEvent {
+  const _PhotoCapturedEvent(super.cameraId);
+}
+
 /// Callback handler for camera-level events from the platform host.
 @visibleForTesting
 class HostCameraMessageHandler implements CameraEventApi {
@@ -627,6 +670,16 @@ class HostCameraMessageHandler implements CameraEventApi {
   /// The controller used to broadcast camera events coming from the
   /// host platform.
   final StreamController<CameraEvent> streamController;
+
+  @override
+  void photoCaptureReady(int requestId) {
+    streamController.add(_PhotoCaptureReadyEvent(cameraId, requestId));
+  }
+
+  @override
+  void photoCaptured() {
+    streamController.add(_PhotoCapturedEvent(cameraId));
+  }
 
   @override
   void error(String message) {

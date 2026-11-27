@@ -367,7 +367,22 @@ extension CameraPlugin: CameraApi {
 
   func takePicture(completion: @escaping (Result<String, any Error>) -> Void) {
     captureSessionQueue.async { [weak self] in
-      self?.camera?.captureToFile(completion: completion)
+      self?.camera?.captureToFile(readyHandler: nil, completion: completion)
+    }
+  }
+
+  func capturePhoto(requestId: Int64, completion: @escaping (Result<String, any Error>) -> Void) {
+    captureSessionQueue.async { [weak self] in
+      guard let camera = self?.camera else {
+        completion(.failure(PigeonError(code: "cameraDisposed", message: "相机已关闭", details: nil)))
+        return
+      }
+      camera.captureToFile(
+        readyHandler: { [weak camera] in
+          ensureToRunOnMainQueue {
+            camera?.dartAPI?.photoCaptureReady(requestId: requestId) { _ in }
+          }
+        }, completion: completion)
     }
   }
 
