@@ -540,6 +540,9 @@ abstract class ImageCapture extends UseCase {
     CameraInfo? originalCamera,
   );
 
+  /// 相机确认开始采集，尚未完成曝光、处理或保存。
+  late void Function()? onCaptureStarted;
+
   late final ResolutionSelector? resolutionSelector;
 
   /// Set the flash mode.

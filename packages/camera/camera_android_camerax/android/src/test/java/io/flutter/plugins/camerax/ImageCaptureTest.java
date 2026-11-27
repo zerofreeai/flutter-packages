@@ -7,6 +7,7 @@ package io.flutter.plugins.camerax;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
@@ -117,6 +118,28 @@ public class ImageCaptureTest {
   }
 
   @Test
+  public void onCaptureStarted_sendsCaptureStartedMessageToDart() {
+    final TestProxyApiRegistrar registrar = new TestProxyApiRegistrar();
+    final ImageCaptureProxyApi api = new ImageCaptureProxyApi(registrar);
+    final ImageCapture imageCapture = mock(ImageCapture.class);
+    registrar.getInstanceManager().addHostCreatedInstance(imageCapture);
+    final ImageCapture.OnImageSavedCallback callback =
+        api.createOnImageSavedCallback(
+            imageCapture,
+            mock(File.class),
+            mock(SystemServicesManager.class),
+            ResultCompat.asCompatCallback(reply -> null));
+
+    callback.onCaptureStarted();
+
+    verify(registrar.getBinaryMessenger())
+        .send(
+            eq("dev.flutter.pigeon.camera_android_camerax.ImageCapture.onCaptureStarted"),
+            any(),
+            any());
+  }
+
+  @Test
   public void takePicture_runsCallbackOnTheMainExecutor() {
     final ProxyApiRegistrar apiRegistrar = new TestProxyApiRegistrar();
     apiRegistrar.setContext(ApplicationProvider.getApplicationContext());
@@ -164,13 +187,15 @@ public class ImageCaptureTest {
           @NonNull
           @Override
           ImageCapture.OnImageSavedCallback createOnImageSavedCallback(
+              @NonNull ImageCapture imageCapture,
               @NonNull File file,
               @NonNull SystemServicesManager systemServicesManager,
               @NonNull Function1<? super Result<String>, Unit> callback) {
             final File mockFile = mock(File.class);
             when(mockFile.getAbsolutePath()).thenReturn(filename);
             final ImageCapture.OnImageSavedCallback imageSavedCallback =
-                super.createOnImageSavedCallback(mockFile, systemServicesManager, callback);
+                super.createOnImageSavedCallback(
+                    imageCapture, mockFile, systemServicesManager, callback);
             imageSavedCallback.onImageSaved(mock(ImageCapture.OutputFileResults.class));
             return imageSavedCallback;
           }
@@ -269,11 +294,13 @@ public class ImageCaptureTest {
           @NonNull
           @Override
           ImageCapture.OnImageSavedCallback createOnImageSavedCallback(
+              @NonNull ImageCapture imageCapture,
               @NonNull File file,
               @NonNull SystemServicesManager systemServicesManager,
               @NonNull Function1<? super Result<String>, Unit> callback) {
             final ImageCapture.OnImageSavedCallback imageSavedCallback =
-                super.createOnImageSavedCallback(mock(File.class), systemServicesManager, callback);
+                super.createOnImageSavedCallback(
+                    imageCapture, mock(File.class), systemServicesManager, callback);
             imageSavedCallback.onError(captureException);
             return imageSavedCallback;
           }

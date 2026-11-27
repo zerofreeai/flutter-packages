@@ -11,6 +11,7 @@ import 'package:flutter/foundation.dart' show Uint8List, debugPrint;
 import 'package:flutter/services.dart' show DeviceOrientation, PlatformException;
 import 'package:flutter/widgets.dart' show Texture, Widget, visibleForTesting;
 import 'package:stream_transform/stream_transform.dart';
+
 import 'camerax_library.dart';
 import 'rotated_preview_delegate.dart';
 
@@ -157,6 +158,14 @@ class AndroidCameraCameraX extends CameraPlatform {
   /// The stream of camera events for the camera with ID cameraId.
   Stream<CameraEvent> _cameraEvents(int cameraId) =>
       cameraEventStreamController.stream.where((CameraEvent event) => event.cameraId == cameraId);
+
+  // Captures only the event controller and camera ID, not this instance: Pigeon keeps the
+  // callback alive for as long as the native ImageCapture exists.
+  static void Function(ImageCapture) _captureStartedCallback(
+    StreamController<CameraEvent> events,
+    int cameraId,
+  ) =>
+      (_) => events.add(_PhotoCaptureStartedEvent(cameraId));
 
   /// The controller we need to stream image data.
   @visibleForTesting
@@ -413,6 +422,10 @@ class AndroidCameraCameraX extends CameraPlatform {
     _analysisCapture = null;
     // Configure ImageCapture instance.
     imageCapture = ImageCapture(
+      onCaptureStarted: _captureStartedCallback(
+        cameraEventStreamController,
+        _flutterSurfaceTextureId,
+      ),
       resolutionSelector: _presetResolutionSelector,
       /* use CameraX default target rotation */ targetRotation: await deviceOrientationManager
           .getDefaultDisplayRotation(),
@@ -1032,6 +1045,7 @@ class AndroidCameraCameraX extends CameraPlatform {
     }
     final ImageCapture previous = imageCapture!;
     final replacement = ImageCapture(
+      onCaptureStarted: _captureStartedCallback(cameraEventStreamController, cameraId),
       resolutionSelector: _presetResolutionSelector,
       targetRotation:
           _lockedCaptureOrientation ?? await deviceOrientationManager.getDefaultDisplayRotation(),
@@ -1063,6 +1077,13 @@ class AndroidCameraCameraX extends CameraPlatform {
     }
     _originalCapture = original;
   }
+
+  /// Emits when CameraX starts capturing a photo, before exposure ends and the file is saved.
+  ///
+  /// Not a save confirmation: the capture can still fail afterwards. Events carry no request ID
+  /// and fire for every [takePicture] on [cameraId].
+  Stream<void> onPhotoCaptureStarted(int cameraId) =>
+      _cameraEvents(cameraId).whereType<_PhotoCaptureStartedEvent>().map((_) {});
 
   /// Captures an image using the camera with ID [cameraId] and returns the file where it was saved.
   @override
@@ -1146,6 +1167,7 @@ class AndroidCameraCameraX extends CameraPlatform {
     final int targetRotation =
         _lockedCaptureOrientation ?? await deviceOrientationManager.getDefaultDisplayRotation();
     imageCapture = ImageCapture(
+      onCaptureStarted: _captureStartedCallback(cameraEventStreamController, cameraId),
       resolutionSelector: _presetResolutionSelector,
       targetRotation: targetRotation,
       jpegQuality: quality,
@@ -1878,4 +1900,8 @@ class AndroidCameraCameraX extends CameraPlatform {
         throw ArgumentError('"$orientation" is not a valid DeviceOrientation value');
     }
   }
+}
+
+class _PhotoCaptureStartedEvent extends CameraEvent {
+  const _PhotoCaptureStartedEvent(super.cameraId);
 }

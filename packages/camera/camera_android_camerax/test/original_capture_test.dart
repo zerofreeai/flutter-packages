@@ -45,7 +45,14 @@ void main() {
     when(native.getCameraInfo()).thenAnswer((_) async => info);
     when(info.getCameraState()).thenAnswer((_) async => MockLiveCameraState());
     PigeonOverrides.imageCapture_new =
-        ({resolutionSelector, targetRotation, flashMode, jpegQuality, originalCamera}) {
+        ({
+          resolutionSelector,
+          targetRotation,
+          flashMode,
+          jpegQuality,
+          originalCamera,
+          onCaptureStarted,
+        }) {
           expect(originalCamera, same(info));
           return replacement;
         };
@@ -54,6 +61,46 @@ void main() {
     expect(camera.imageCapture, same(replacement));
     verify(provider.unbind(<UseCase>[previous])).called(1);
     verify(provider.bindToLifecycle(selector, <UseCase>[replacement])).called(1);
+  });
+
+  test('original capture replacement reports capture start for the camera', () async {
+    final camera = AndroidCameraCameraX();
+    final replacement = MockImageCapture();
+    final provider = MockProcessCameraProvider();
+    final native = MockCamera();
+    final info = MockCameraInfo();
+    final selector = MockCameraSelector();
+    camera.imageCapture = MockImageCapture();
+    camera.processCameraProvider = provider;
+    camera.cameraSelector = selector;
+    camera.cameraInfo = info;
+    PigeonOverrides.deviceOrientationManager_new = ({required onDeviceOrientationChanged}) =>
+        MockDeviceOrientationManager();
+    when(provider.isBound(any)).thenAnswer((_) async => false);
+    when(
+      provider.bindToLifecycle(selector, <UseCase>[replacement]),
+    ).thenAnswer((_) async => native);
+    when(native.getCameraInfo()).thenAnswer((_) async => info);
+    when(info.getCameraState()).thenAnswer((_) async => MockLiveCameraState());
+    void Function(ImageCapture)? actualOnCaptureStarted;
+    PigeonOverrides.imageCapture_new =
+        ({
+          resolutionSelector,
+          targetRotation,
+          flashMode,
+          jpegQuality,
+          originalCamera,
+          onCaptureStarted,
+        }) {
+          actualOnCaptureStarted = onCaptureStarted;
+          return replacement;
+        };
+
+    await camera.configureOriginalCapture(1, true);
+
+    final Future<void> captureStarted = camera.onPhotoCaptureStarted(1).first;
+    actualOnCaptureStarted!(replacement);
+    await captureStarted;
   });
 
   test('释放取景分析输出后HDR仍不可绑定时恢复原拍照用例', () async {
@@ -81,8 +128,14 @@ void main() {
     when(native.getCameraInfo()).thenAnswer((_) async => info);
     when(info.getCameraState()).thenAnswer((_) async => MockLiveCameraState());
     PigeonOverrides.imageCapture_new =
-        ({resolutionSelector, targetRotation, flashMode, jpegQuality, originalCamera}) =>
-            replacement;
+        ({
+          resolutionSelector,
+          targetRotation,
+          flashMode,
+          jpegQuality,
+          originalCamera,
+          onCaptureStarted,
+        }) => replacement;
     await camera.configureOriginalCapture(1, true);
     expect(camera.imageCapture, same(previous));
     verify(provider.unbind(<UseCase>[analysis])).called(1);

@@ -171,6 +171,7 @@ void main() {
           ResolutionSelector? resolutionSelector,
           int? jpegQuality,
           originalCamera,
+          void Function(ImageCapture)? onCaptureStarted,
         }) {
           final mockImageCapture = MockImageCapture();
           when(mockImageCapture.resolutionSelector).thenReturn(resolutionSelector);
@@ -533,6 +534,7 @@ void main() {
             ResolutionSelector? resolutionSelector,
             int? jpegQuality,
             originalCamera,
+            void Function(ImageCapture)? onCaptureStarted,
           }) {
             return mockImageCapture;
           };
@@ -1072,6 +1074,7 @@ void main() {
             ResolutionSelector? resolutionSelector,
             int? jpegQuality,
             originalCamera,
+            void Function(ImageCapture)? onCaptureStarted,
           }) {
             return mockImageCapture;
           };
@@ -1326,6 +1329,50 @@ void main() {
     expect(camera.enableRecordingAudio, isTrue);
   });
 
+  test('createCamera reports ImageCapture capture start for the created camera only', () async {
+    final camera = AndroidCameraCameraX();
+    const testCameraDescription = CameraDescription(
+      name: 'cameraName',
+      lensDirection: CameraLensDirection.back,
+      sensorOrientation: 90,
+    );
+    final mockCamera = MockCamera();
+    final mockProcessCameraProvider = MockProcessCameraProvider();
+    final mockCameraInfo = MockCameraInfo();
+    void Function(ImageCapture)? actualOnCaptureStarted;
+
+    setUpOverridesForTestingUseCaseConfiguration(mockProcessCameraProvider);
+    PigeonOverrides.imageCapture_new =
+        ({
+          int? targetRotation,
+          CameraXFlashMode? flashMode,
+          ResolutionSelector? resolutionSelector,
+          int? jpegQuality,
+          originalCamera,
+          void Function(ImageCapture)? onCaptureStarted,
+        }) {
+          actualOnCaptureStarted = onCaptureStarted;
+          final mockImageCapture = MockImageCapture();
+          when(mockImageCapture.resolutionSelector).thenReturn(resolutionSelector);
+          return mockImageCapture;
+        };
+    when(mockProcessCameraProvider.bindToLifecycle(any, any)).thenAnswer((_) async => mockCamera);
+    when(mockCamera.getCameraInfo()).thenAnswer((_) async => mockCameraInfo);
+    when(mockCameraInfo.getCameraState()).thenAnswer((_) async => MockLiveCameraState());
+
+    final int cameraId = await camera.createCamera(testCameraDescription, ResolutionPreset.low);
+
+    var startedOnCamera = 0;
+    var startedOnOtherCamera = 0;
+    camera.onPhotoCaptureStarted(cameraId).listen((_) => startedOnCamera++);
+    camera.onPhotoCaptureStarted(cameraId + 1).listen((_) => startedOnOtherCamera++);
+    actualOnCaptureStarted!(MockImageCapture());
+    await pumpEventQueue();
+
+    expect(startedOnCamera, 1);
+    expect(startedOnOtherCamera, 0);
+  });
+
   test('createCamera and initializeCamera sets targetFps as expected', () async {
     final camera = AndroidCameraCameraX();
     const CameraLensDirection testLensDirection = CameraLensDirection.back;
@@ -1480,6 +1527,7 @@ void main() {
           ResolutionSelector? resolutionSelector,
           int? jpegQuality,
           originalCamera,
+          void Function(ImageCapture)? onCaptureStarted,
         }) {
           return mockImageCapture;
         };
@@ -1834,6 +1882,7 @@ void main() {
           ResolutionSelector? resolutionSelector,
           int? jpegQuality,
           originalCamera,
+          void Function(ImageCapture)? onCaptureStarted,
         }) => mockImageCapture;
     PigeonOverrides.recorder_new =
         ({int? aspectRatio, int? targetVideoEncodingBitRate, QualitySelector? qualitySelector}) =>
@@ -2863,6 +2912,7 @@ void main() {
             int? targetRotation,
             int? jpegQuality,
             originalCamera,
+            void Function(ImageCapture)? onCaptureStarted,
           }) {
             return mockImageCapture;
           };
@@ -3078,6 +3128,7 @@ void main() {
             int? targetRotation,
             int? jpegQuality,
             originalCamera,
+            void Function(ImageCapture)? onCaptureStarted,
           }) {
             return mockImageCapture;
           };
@@ -3317,6 +3368,7 @@ void main() {
     const cameraId = 9;
     int? actualTargetRotation;
     int? actualJpegQuality;
+    void Function(ImageCapture)? actualOnCaptureStarted;
 
     camera.processCameraProvider = mockProcessCameraProvider;
     camera.imageCapture = mockImageCapture;
@@ -3335,15 +3387,21 @@ void main() {
           ResolutionSelector? resolutionSelector,
           int? jpegQuality,
           originalCamera,
+          void Function(ImageCapture)? onCaptureStarted,
         }) {
           actualTargetRotation = targetRotation;
           actualJpegQuality = jpegQuality;
+          actualOnCaptureStarted = onCaptureStarted;
           return mockNewImageCapture;
         };
 
     when(mockProcessCameraProvider.isBound(mockImageCapture)).thenAnswer((_) async => true);
 
     await camera.setJpegImageQuality(cameraId, jpegQuality);
+
+    final Future<void> captureStarted = camera.onPhotoCaptureStarted(cameraId).first;
+    actualOnCaptureStarted!(mockNewImageCapture);
+    await captureStarted;
 
     verify(mockProcessCameraProvider.unbind(<UseCase>[mockImageCapture])).called(1);
     verify(mockDeviceOrientationManager.getDefaultDisplayRotation()).called(1);
@@ -3391,6 +3449,7 @@ void main() {
             ResolutionSelector? resolutionSelector,
             int? jpegQuality,
             originalCamera,
+            void Function(ImageCapture)? onCaptureStarted,
           }) {
             actualTargetRotation = targetRotation;
             actualJpegQuality = jpegQuality;
@@ -3440,6 +3499,7 @@ void main() {
             ResolutionSelector? resolutionSelector,
             int? jpegQuality,
             originalCamera,
+            void Function(ImageCapture)? onCaptureStarted,
           }) {
             return mockNewImageCapture;
           };
