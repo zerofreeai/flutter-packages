@@ -177,7 +177,11 @@ class AVFoundationCamera extends CameraPlatform {
     await _hostApi.unlockCaptureOrientation();
   }
 
-  /// 照片曝光完成通知；不能用作照片保存成功通知。
+  /// Emits when a photo has been captured, before it is processed and saved.
+  ///
+  /// Not a save confirmation. Events carry no request ID and fire for every capture on
+  /// [cameraId], including [takePicture]. For a [capturePhoto] request, the platform sends this
+  /// event before that request's ready event.
   Stream<void> onPhotoCaptured(int cameraId) =>
       _cameraEvents(cameraId).whereType<_PhotoCapturedEvent>().map((_) {});
 

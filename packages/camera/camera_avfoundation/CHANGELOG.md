@@ -1,3 +1,8 @@
+## 0.10.3+zp.5
+
+* Removes the native photo capture timing logs.
+* Sends a photo's captured event before its ready event.
+
 ## 0.10.3+zp.4
 
 * 分离拍摄就绪通知与独立照片结果，在支持设备上启用零快门和响应式拍摄，保留质量优先、分辨率及 HEIF/HDR 基线。
